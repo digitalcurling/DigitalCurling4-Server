@@ -151,11 +151,6 @@ class BaseServer:
         Returns:
             UUID: send the match_id to the client
         """
-        if client_data.game_mode == GameModeModel.mix_doubles:
-            if client_data.positioned_stones_pattern is None:
-                client_data.positioned_stones_pattern = 0
-            if client_data.positioned_stones_pattern < 0 or client_data.positioned_stones_pattern > 5:
-                raise bad_request("positioned_stones_pattern must be between 0 and 5.")
 
         match_id: UUID = uuid7()
         score_id: UUID = uuid7()
@@ -164,7 +159,13 @@ class BaseServer:
         applied_rule_name: AppliedRuleModel = None
         applied_rule: int = None
 
-# ======= Validate client data =======
+        # ======= Validate client data =======
+        if client_data.game_mode == GameModeModel.mix_doubles:
+            if client_data.positioned_stones_pattern is None:
+                client_data.positioned_stones_pattern = 0
+            if client_data.positioned_stones_pattern < 0 or client_data.positioned_stones_pattern > 5:
+                raise bad_request("positioned_stones_pattern must be between 0 and 5.")
+
         simulator_id = await match_db.read_simulator_id(client_data.simulator.simulator_name)
         if simulator_id is None:
             raise not_found("Simulator not found.")

@@ -228,12 +228,25 @@ async def perform_mix_doubles_end_setup(
                     else settings_row.team1_power_play_end
                 )
                 if used_end is not None:
-                    raise ValueError("Power play already used.")
-
-                if match_team_name == "team0":
-                    settings_row.team0_power_play_end = current_end
+                    # Do not block the match if client mistakenly requests power play twice.
+                    # Fall back to the default behavior (center_house) and continue setup.
+                    power_play_side = None
+                    selector_is_hammer = True
+                    power_play_requested = False
                 else:
-                    settings_row.team1_power_play_end = current_end
+                    if match_team_name == "team0":
+                        settings_row.team0_power_play_end = current_end
+                    else:
+                        settings_row.team1_power_play_end = current_end
+
+            # If power play was disabled above (extra end or already used),
+            # recompute throw order for the effective request (center_house).
+            if selector_is_hammer:
+                hammer_team_name = match_team_name
+                first_throw_team_id = other_team_id
+            else:
+                hammer_team_name = other_team_name
+                first_throw_team_id = caller_team_id
 
             # positioned_stones_pattern is chosen at match creation time.
             pattern = match_data.mix_doubles_settings.positioned_stones_pattern
