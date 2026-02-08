@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from enum import Enum
 from uuid import UUID
 from typing import Optional, Dict, List, Literal
@@ -42,23 +42,20 @@ class CoordinateDataModel(BaseModel):
     x: float
     y: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StoneCoordinateModel(BaseModel):
     data: Dict[str, List[CoordinateDataModel]]  # フラットなDict型
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ScoreModel(BaseModel):
     team0: list
     team1: list
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ShotInfoModel(BaseModel):
@@ -109,8 +106,7 @@ class StateModel(BaseModel):
     stone_coordinate: Optional[StoneCoordinateModel] = None
     score: Optional[ScoreModel] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PlayerModel(BaseModel):

@@ -8,8 +8,20 @@ Rule of thumb:
 - Not OK: touching DB sessions, Redis, FastAPI, datetime.now(), etc.
 """
 
+import numpy as np
+
 MIX_DOUBLES_TOTAL_SHOTS_PER_END = 10
 STANDARD_TOTAL_SHOTS_PER_END = 16
+
+# ==============================================================================
+# ==== Scoring (shared across modes) ============================================
+# ==============================================================================
+
+# Values are meters in the simulator coordinate system.
+TEE_LINE = np.float32(38.405)
+HOUSE_RADIUS = np.float32(1.829)
+STONE_RADIUS = np.float32(0.145)
+SCORE_DISTANCE = np.float32(HOUSE_RADIUS + STONE_RADIUS)
 
 MD_POSITIONED_STONE_IN_HOUSE = (0.0, 38.870)
 MD_POWER_PLAY_IN_HOUSE = (1.219, 38.260)
@@ -58,6 +70,41 @@ def generate_reset_stone_coordinate_data(game_mode: str) -> dict:
         "team0": [{"x": 0.0, "y": 0.0} for _ in range(count)],
         "team1": [{"x": 0.0, "y": 0.0} for _ in range(count)],
     }
+
+
+def stone_distance_from_tee(x: float, y: float) -> float:
+    """Return the distance from tee (0, TEE_LINE)."""
+    x32 = np.float32(x)
+    y32 = np.float32(y)
+    return np.sqrt((x32 * x32) + ((y32 - TEE_LINE) * (y32 - TEE_LINE)))
+
+
+def get_score_from_distance_list(distance_list: list[tuple[int, float]]) -> tuple[int | None, int]:
+    """Compute score from list of (team_index, distance).
+
+    Returns:
+        (scored_team, points). If no stones are in the house, returns (None, 0).
+    """
+    if not distance_list:
+        return None, 0
+
+    sort_distance_list = sorted(distance_list, key=lambda x: x[1])
+    if sort_distance_list[0][1] > SCORE_DISTANCE:
+        return None, 0
+
+    scored_team = sort_distance_list[0][0]
+    score = 1
+    for team, distance in sort_distance_list[1:]:
+        if team == scored_team and distance <= SCORE_DISTANCE:
+            score += 1
+        else:
+            break
+    return scored_team, score
+
+
+def calculate_total_score(score_list: list[int]) -> int:
+    """Sum the per-end scores."""
+    return int(sum(score_list))
 
 # ==============================================================================
 # ==== Common (shared across modes) ============================================

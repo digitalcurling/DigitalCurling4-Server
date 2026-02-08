@@ -36,10 +36,12 @@ from src.models.schema_models import (
 from src.models.basic_authentication_models import UserModel
 from src.converter import DataConverter
 from src.redis_subscriber import RedisSubscriber
-from src.score_utils import ScoreUtils
 from src.domain.match_rules import (
+    calculate_total_score,
     generate_reset_stone_coordinate_data,
+    get_score_from_distance_list,
     stone_count_per_team,
+    stone_distance_from_tee,
     total_shots_per_end as get_total_shots_per_end,
 )
 from src.services.simulation import simulate_fcv1
@@ -61,7 +63,6 @@ data_converter = DataConverter()
 read_authentication = ReadAuthentication()
 create_authentication = CreateAuthentication()
 delete_authentication = DeleteAuthentication()
-score_utils = ScoreUtils()
 basic_auth = BasicAuthentication()
 stone_simulator = StoneSimulator()
 
@@ -706,16 +707,24 @@ class DCServer:
             distance_list: List = []
             for i in range(stone_count):
                 distance_list.append(
-                    score_utils.get_distance(
-                        0, team0_stones_position[i][0], team0_stones_position[i][1]
+                    (
+                        0,
+                        stone_distance_from_tee(
+                            float(team0_stones_position[i][0]),
+                            float(team0_stones_position[i][1]),
+                        ),
                     )
                 )
                 distance_list.append(
-                    score_utils.get_distance(
-                        1, team1_stones_position[i][0], team1_stones_position[i][1]
+                    (
+                        1,
+                        stone_distance_from_tee(
+                            float(team1_stones_position[i][0]),
+                            float(team1_stones_position[i][1]),
+                        ),
                     )
                 )
-            scored_team, score = score_utils.get_score(distance_list)
+            scored_team, score = get_score_from_distance_list(distance_list)
             if scored_team is None:
                 next_end_first_shot_team_id = (
                     match_data.first_team_id
@@ -779,8 +788,8 @@ class DCServer:
             await match_db.update_score(score_data)
 
             if end_number >= match_data.standard_end_count - 1:
-                team0_total_score: int = score_utils.calculate_score(team0_score)
-                team1_total_score: int = score_utils.calculate_score(team1_score)
+                team0_total_score: int = calculate_total_score(team0_score)
+                team1_total_score: int = calculate_total_score(team1_score)
                 if team0_total_score > team1_total_score:
                     next_end_first_shot_team_id = None
                     winner_team_id = match_data.first_team_id

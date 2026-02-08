@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Json, Field
+from pydantic import BaseModel, ConfigDict, Json, Field
 from typing import Literal, Optional
 from uuid import UUID
 from datetime import datetime
@@ -8,16 +8,14 @@ class TournamentSchema(BaseModel):
     tournament_id: UUID
     tournament_name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PhysicalSimulatorSchema(BaseModel):
     physical_simulator_id: UUID
     simulator_name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PlayerSchema(BaseModel):
@@ -28,8 +26,7 @@ class PlayerSchema(BaseModel):
     angle_std_dev: float
     player_name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TrajectorySchema(BaseModel):
@@ -41,8 +38,7 @@ class StoneCoordinateSchema(BaseModel):
     stone_coordinate_id: UUID
     data: dict
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ScoreSchema(BaseModel):
@@ -50,8 +46,7 @@ class ScoreSchema(BaseModel):
     team0: list
     team1: list
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ShotInfoSchema(BaseModel):
@@ -67,8 +62,7 @@ class ShotInfoSchema(BaseModel):
     angular_velocity: float
     shot_angle: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StateSchema(BaseModel):
@@ -90,8 +84,7 @@ class StateSchema(BaseModel):
     stone_coordinate: Optional[StoneCoordinateSchema] = None
     score: Optional[ScoreSchema] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MatchMixDoublesSettingsSchema(BaseModel):
@@ -100,8 +93,7 @@ class MatchMixDoublesSettingsSchema(BaseModel):
     team1_power_play_end: int | None = None
     end_setup_team_ids: list[UUID] = Field(default_factory=list)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MatchDataSchema(BaseModel):
@@ -136,8 +128,7 @@ class MatchDataSchema(BaseModel):
     simulator: Optional[PhysicalSimulatorSchema] = None
     mix_doubles_settings: Optional[MatchMixDoublesSettingsSchema] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TeamSchema(BaseModel):

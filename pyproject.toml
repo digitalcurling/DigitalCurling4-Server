@@ -17,3 +17,8 @@ dependencies = [
     "uuid6==2024.7.10",
     "uvicorn[standard]==0.32.1",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.0.2",
+]
