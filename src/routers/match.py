@@ -175,21 +175,21 @@ class BaseServer:
         # Pydantic already validates this as AppliedRuleModel.
         applied_rule_name = client_data.applied_rule
 
-        if client_data.game_mode == GameModeModel.mix_doubles and applied_rule_name != AppliedRuleModel.modified_fgz:
-            raise bad_request('Mixed doubles only supports "modified_fgz".')
+        if client_data.game_mode == GameModeModel.mix_doubles and applied_rule_name != AppliedRuleModel.modified_fgz_rule:
+            raise bad_request('Mixed doubles only supports "modified_fgz_rule".')
 
-        if client_data.game_mode == GameModeModel.standard and applied_rule_name == AppliedRuleModel.modified_fgz:
-            raise bad_request('Standard game mode does not support "modified_fgz".')
+        if client_data.game_mode == GameModeModel.standard and applied_rule_name == AppliedRuleModel.modified_fgz_rule:
+            raise bad_request('Standard game mode does not support "modified_fgz_rule".')
         
-        if applied_rule_name == AppliedRuleModel.five_rock_rule:
+        if applied_rule_name == AppliedRuleModel.fgz_rule:
             applied_rule = 0
         elif applied_rule_name == AppliedRuleModel.no_tick_rule:
             applied_rule = 1
-        elif applied_rule_name == AppliedRuleModel.modified_fgz:
+        elif applied_rule_name == AppliedRuleModel.modified_fgz_rule:
             applied_rule = 2
         else:
             raise bad_request(
-                'Invalid applied rule. Please choose "five_rock_rule", "no_tick_rule", or "modified_fgz".'
+                'Invalid applied rule. Please choose "fgz_rule", "no_tick_rule", or "modified_fgz_rule".'
             )
 # ==================================
 

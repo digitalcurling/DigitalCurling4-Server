@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import hashlib
 from uuid import UUID
 
 import pytest
@@ -15,6 +16,7 @@ except ModuleNotFoundError as e:
         pytest.skip("Native simulator module missing (src.simulator).", allow_module_level=True)
     raise
 from src.models.dc_models import PositionedStonesModel, GameModeModel
+from src.models.basic_authentication_models import UserModel
 from src.models.schema_models import (
     MatchDataSchema,
     MatchMixDoublesSettingsSchema,
@@ -22,6 +24,21 @@ from src.models.schema_models import (
     StateSchema,
     StoneCoordinateSchema,
 )
+
+
+TEST_USERNAME = "user"
+TEST_PASSWORD = "password"
+
+
+async def _fake_read_user_data(username: str, session) -> UserModel:
+    # Satisfy BasicAuthentication.check_user_data by returning a user with a matching hash.
+    import src.authentication.basic_authentication as auth_mod
+
+    salt = "testsalt"
+    hashed_password = hashlib.sha256(
+        (TEST_PASSWORD + salt + auth_mod.pepper_data).encode()
+    ).hexdigest()
+    return UserModel(username=username, hash_password=hashed_password, salt=salt)
 
 
 def _match_data(*, game_mode: str) -> MatchDataSchema:
@@ -108,12 +125,17 @@ def test_end_setup_rejects_standard_mode(monkeypatch: pytest.MonkeyPatch):
     async def fake_read_latest_state_data(match_id):
         return latest
 
+    monkeypatch.setattr("src.authentication.basic_authentication.read_auth.read_user_data", _fake_read_user_data)
     monkeypatch.setattr("src.routers.match.basic_auth.check_match_data", fake_check_match_data)
     monkeypatch.setattr("src.services.match_db.read_match_data", fake_read_match_data)
     monkeypatch.setattr("src.services.match_db.read_latest_state_data", fake_read_latest_state_data)
 
     client = TestClient(app)
-    res = client.post(f"/matches/{md.match_id}/end-setup", params={"request": PositionedStonesModel.center_house})
+    res = client.post(
+        f"/matches/{md.match_id}/end-setup",
+        params={"request": PositionedStonesModel.center_house.value},
+        auth=(TEST_USERNAME, TEST_PASSWORD),
+    )
     assert res.status_code == 400
 
 
@@ -130,12 +152,17 @@ def test_end_setup_conflict_if_end_already_started(monkeypatch: pytest.MonkeyPat
     async def fake_read_latest_state_data(match_id):
         return latest
 
+    monkeypatch.setattr("src.authentication.basic_authentication.read_auth.read_user_data", _fake_read_user_data)
     monkeypatch.setattr("src.routers.match.basic_auth.check_match_data", fake_check_match_data)
     monkeypatch.setattr("src.services.match_db.read_match_data", fake_read_match_data)
     monkeypatch.setattr("src.services.match_db.read_latest_state_data", fake_read_latest_state_data)
 
     client = TestClient(app)
-    res = client.post(f"/matches/{md.match_id}/end-setup", params={"request": PositionedStonesModel.center_house})
+    res = client.post(
+        f"/matches/{md.match_id}/end-setup",
+        params={"request": PositionedStonesModel.center_house.value},
+        auth=(TEST_USERNAME, TEST_PASSWORD),
+    )
     assert res.status_code == 409
     assert "End already started" in res.text
 
@@ -163,6 +190,7 @@ def test_end_setup_calls_service_and_publishes_state(monkeypatch: pytest.MonkeyP
         published["channel"] = channel
         published["payload"] = payload
 
+    monkeypatch.setattr("src.authentication.basic_authentication.read_auth.read_user_data", _fake_read_user_data)
     monkeypatch.setattr("src.routers.match.basic_auth.check_match_data", fake_check_match_data)
     monkeypatch.setattr("src.services.match_db.read_match_data", fake_read_match_data)
     monkeypatch.setattr("src.services.match_db.read_latest_state_data", fake_read_latest_state_data)
@@ -170,6 +198,10 @@ def test_end_setup_calls_service_and_publishes_state(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr("src.routers.match.redis.publish", fake_publish)
 
     client = TestClient(app)
-    res = client.post(f"/matches/{md.match_id}/end-setup", params={"request": PositionedStonesModel.center_house})
+    res = client.post(
+        f"/matches/{md.match_id}/end-setup",
+        params={"request": PositionedStonesModel.center_house.value},
+        auth=(TEST_USERNAME, TEST_PASSWORD),
+    )
     assert res.status_code == 200
     assert published.get("channel") == f"match:{md.match_id}"

@@ -10,9 +10,9 @@ class MatchNameModel(str, Enum):
 
 
 class AppliedRuleModel(str, Enum):
-    five_rock_rule = "five_rock_rule"  # Applied Five Rock Rule
+    fgz_rule = "fgz_rule"  # Applied 5-rock Free Guard Zone
     no_tick_rule = "no_tick_rule"  # Applied No Tick Rule
-    modified_fgz = "modified_fgz"  # Mixed doubles only
+    modified_fgz_rule = "modified_fgz_rule"  # Mixed doubles only
 
 
 class GameModeModel(str, Enum):
