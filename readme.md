@@ -1,4 +1,4 @@
-# New Server For Digital Curling
+# DigitalCurling4
 
 This is a new server for digital curling.
 
