@@ -1,19 +1,19 @@
 import argparse
+import sys
+from pathlib import Path
 from fastapi import APIRouter, Depends, status, HTTPException
-from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy import select, desc
 import secrets
 import hashlib
 import asyncio
-import logging
 from uuid import UUID
-from typing import Tuple
+
+project_root = Path(__file__).resolve().parents[2]
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 from src.crud import ReadData, UpdateData
-from src.models.basic_authentication_shemas import UserTable
 from src.models.basic_authentication_models import UserModel
 from src.authentication.basic_authentication_crud import (
     CreateAuthentication,
@@ -21,7 +21,6 @@ from src.authentication.basic_authentication_crud import (
     DeleteAuthentication,
 )
 from src.create_sqlite_engine import engine
-from src.models.dc_models import MatchNameModel
 from src.load_secrets import pepper_data
 
 Session = async_sessionmaker(autocommit=False, class_=AsyncSession, bind=engine)
@@ -120,9 +119,9 @@ class BasicAuthentication:
             await create_auth.create_user_data(user_name, password, session)
 
     # read all user data
-    async def read_user_data(self) -> UserModel:
+    async def read_user_data(self, user_name) -> UserModel:
         async with Session() as session:
-            user_data: UserModel = await read_auth.read_user_data(username="user", session=session)
+            user_data: UserModel = await read_auth.read_user_data(username=user_name, session=session)
         return user_data
     
     async def delete_expired_match_data(self) -> None:
@@ -138,7 +137,7 @@ def get_parser() -> argparse.ArgumentParser:
 async def main(user_name: str, password: str):
     basic_auth = BasicAuthentication()
     await basic_auth.store_user_data(user_name, password)
-    user_data = await basic_auth.read_user_data()
+    user_data = await basic_auth.read_user_data(user_name)
     print(user_data.username, user_data.hash_password, user_data.salt)
 
 
