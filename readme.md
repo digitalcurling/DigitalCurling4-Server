@@ -25,6 +25,22 @@ cd ./src/authentication
 python3 basic_authentication.py --username user --password password
 ```
 
+This branch has the following default credentials:
+username=user0, password=pass0
+username=user1, password=pass1
+If you set these in your client-side .env file, you can start playing immediately.
+
+Example:
+```
+MATCH_USER_NAME="user0"
+PASS_WORD="pass0"
+```
+or
+```
+MATCH_USER_NAME="user1"
+PASS_WORD="pass1"
+```
+
 ### Start server
 
 1. first you need to install docker and docker-compose, then pull this repository.
@@ -43,6 +59,7 @@ python3 basic_authentication.py --username user --password password
     POSTGRES_HOST=your_host
     POSTGRES_PORT=your_port
     ```
+    For details, refer to the [.env.sample](./.env.sample) file.
 
 1. Create docker network:
 

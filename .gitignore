@@ -164,3 +164,4 @@ core/
 .txt
 !src/simulator.so
 src/*.sqlite3
+!src/basic_certification.sqlite3
