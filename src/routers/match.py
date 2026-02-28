@@ -764,11 +764,11 @@ class DCServer:
                 if scored_team == 0:
                     team0_score[end_number] = score
                     team1_score[end_number] = 0
-                    next_end_first_shot_team_id = match_data.second_team_id
+                    next_end_first_shot_team_id = match_data.first_team_id
                 elif scored_team == 1:
                     team0_score[end_number] = 0
                     team1_score[end_number] = score
-                    next_end_first_shot_team_id = match_data.first_team_id
+                    next_end_first_shot_team_id = match_data.second_team_id
             elif end_number >= match_data.standard_end_count:
                 if scored_team == 0:
                     team0_score[match_data.standard_end_count] = score
