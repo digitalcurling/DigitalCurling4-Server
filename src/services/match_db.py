@@ -56,14 +56,20 @@ async def create_match_data(match_data: MatchDataSchema) -> None:
     async with Session() as session:
         success = await CreateData.create_match_data(match_data, session)
         if not success:
-            raise RuntimeError("Failed to create match data")
+            raise RuntimeError(
+                f"Failed to create match data (match_id={match_data.match_id}, "
+                f"simulator_id={match_data.physical_simulator_id}, game_mode={match_data.game_mode})"
+            )
 
 
 async def create_state_data(state: StateSchema) -> None:
     async with Session() as session:
         success = await CreateData.create_state_data(state, session)
         if not success:
-            raise RuntimeError("Failed to create state data")
+            raise RuntimeError(
+                f"Failed to create state data (state_id={state.state_id}, "
+                f"match_id={state.match_id}, end_number={state.end_number})"
+            )
 
 
 async def create_player_data(player: PlayerSchema) -> None:
@@ -121,7 +127,7 @@ async def update_score(score) -> None:
         await UpdateData.update_score(score, session)
 
 
-async def perform_mix_doubles_end_setup(
+async def perform_mixed_doubles_end_setup(
     match_data: MatchDataSchema,
     latest_state: StateSchema,
     match_team_name: str,
@@ -130,7 +136,7 @@ async def perform_mix_doubles_end_setup(
     """DB-backed end-setup (transactional).
 
     Responsibilities:
-    - Authorize the caller against match_mix_doubles_settings.end_setup_team_ids[end_number].
+    - Authorize the caller against match_mixed_doubles_settings.end_setup_team_ids[end_number].
     - Enforce power play rules (only once per team; disabled in extra ends).
     - Generate initial positioned stones and create the setup State for the end.
 
@@ -154,7 +160,7 @@ async def perform_mix_doubles_end_setup(
             other_team_name = "team1" if match_team_name == "team0" else "team0"
 
             # Lock settings row to read/update power play usage and selector list.
-            settings_row = await ReadData.read_mix_doubles_settings_row_for_update(
+            settings_row = await ReadData.read_mixed_doubles_settings_row_for_update(
                 match_data.match_id, session
             )
             if settings_row is None:
@@ -249,7 +255,7 @@ async def perform_mix_doubles_end_setup(
                 first_throw_team_id = caller_team_id
 
             # positioned_stones_pattern is chosen at match creation time.
-            pattern = match_data.mix_doubles_settings.positioned_stones_pattern
+            pattern = match_data.mixed_doubles_settings.positioned_stones_pattern
             stone_data = generate_mixed_doubles_initial_stones(
                 hammer_team_name,
                 power_play_side,
@@ -268,7 +274,7 @@ async def perform_mix_doubles_end_setup(
                 winner_team_id=None,
                 match_id=match_data.match_id,
                 end_number=latest_state.end_number,
-                shot_number=0,
+                team_shot_number=0,
                 total_shot_number=0,
                 first_team_remaining_time=latest_state.first_team_remaining_time,
                 second_team_remaining_time=latest_state.second_team_remaining_time,
@@ -294,7 +300,7 @@ async def set_end_setup_team_for_end(
 ) -> None:
     """Persist selector (hammer) team for an end.
 
-    Stored as JSONB list: match_mix_doubles_settings.end_setup_team_ids
+    Stored as JSONB list: match_mixed_doubles_settings.end_setup_team_ids
     - Index corresponds to end_number (0-based).
 
     Typical call site:
@@ -311,7 +317,7 @@ async def set_end_setup_team_for_end(
     """
     async with Session() as session:
         async with session.begin():
-            settings_row = await ReadData.read_mix_doubles_settings_row_for_update(match_id, session)
+            settings_row = await ReadData.read_mixed_doubles_settings_row_for_update(match_id, session)
             if settings_row is None:
                 raise RuntimeError("Mixed doubles settings row not found.")
 

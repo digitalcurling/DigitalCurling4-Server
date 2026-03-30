@@ -24,7 +24,7 @@ from src.models.dc_models import (
 )
 from src.models.schema_models import (
     MatchDataSchema,
-    MatchMixDoublesSettingsSchema,
+    MatchMixedDoublesSettingsSchema,
     PhysicalSimulatorSchema,
     PlayerSchema,
     ScoreSchema,
@@ -82,8 +82,8 @@ async def state_end_number_update(state_data: StateSchema, next_shot_team_id: UU
     if match_data is None:
         raise not_found("Match not found.")
 
-    is_mix_doubles = match_data.game_mode == GameModeModel.mix_doubles.value
-    if is_mix_doubles:
+    is_mixed_doubles = match_data.game_mode == GameModeModel.mixed_doubles.value
+    if is_mixed_doubles:
         next_shot_team_id = None
         total_shot_number = None
     elif next_shot_team_id is None:
@@ -102,7 +102,7 @@ async def state_end_number_update(state_data: StateSchema, next_shot_team_id: UU
         winner_team_id=state_data.winner_team_id,
         match_id=state_data.match_id,
         end_number=state_data.end_number + 1,
-        shot_number=None if total_shot_number is None else int(total_shot_number / 2),
+        team_shot_number=None if total_shot_number is None else int(total_shot_number / 2),
         total_shot_number=total_shot_number,
         first_team_remaining_time=state_data.first_team_remaining_time,
         second_team_remaining_time=state_data.second_team_remaining_time,
@@ -160,7 +160,7 @@ class BaseServer:
         applied_rule: int = None
 
         # ======= Validate client data =======
-        if client_data.game_mode == GameModeModel.mix_doubles:
+        if client_data.game_mode == GameModeModel.mixed_doubles:
             if client_data.positioned_stones_pattern is None:
                 client_data.positioned_stones_pattern = 0
             if client_data.positioned_stones_pattern < 0 or client_data.positioned_stones_pattern > 5:
@@ -176,7 +176,7 @@ class BaseServer:
         # Pydantic already validates this as AppliedRuleModel.
         applied_rule_name = client_data.applied_rule
 
-        if client_data.game_mode == GameModeModel.mix_doubles and applied_rule_name != AppliedRuleModel.modified_fgz_rule:
+        if client_data.game_mode == GameModeModel.mixed_doubles and applied_rule_name != AppliedRuleModel.modified_fgz_rule:
             raise bad_request('Mixed doubles only supports "modified_fgz_rule".')
 
         if client_data.game_mode == GameModeModel.standard and applied_rule_name == AppliedRuleModel.modified_fgz_rule:
@@ -208,8 +208,8 @@ class BaseServer:
             winner_team_id=None,
             match_id=match_id,
             end_number=0,
-            shot_number=None if client_data.game_mode == GameModeModel.mix_doubles else 0,
-            total_shot_number=None if client_data.game_mode == GameModeModel.mix_doubles else 0,
+            team_shot_number=None if client_data.game_mode == GameModeModel.mixed_doubles else 0,
+            total_shot_number=None if client_data.game_mode == GameModeModel.mixed_doubles else 0,
             first_team_remaining_time=client_data.time_limit,
             second_team_remaining_time=client_data.time_limit,
             first_team_extra_end_remaining_time=client_data.extra_end_time_limit,
@@ -219,7 +219,7 @@ class BaseServer:
             shot_id=None,
             # In mixed doubles, the first end requires an explicit end-setup command.
             next_shot_team_id=None
-            if client_data.game_mode == GameModeModel.mix_doubles
+            if client_data.game_mode == GameModeModel.mixed_doubles
             else "5050f20f-cf97-4fb1-bbc1-f2c9052e0d17",
             created_at=datetime.now(),
             stone_coordinate=stone_coordinate,
@@ -246,13 +246,13 @@ class BaseServer:
             first_team_id="5050f20f-cf97-4fb1-bbc1-f2c9052e0d17",
             first_team_player1_id="006951d4-37b2-48eb-85a2-af9463a1e7aa",  # Set the ID of the player to be used in AI matches as default
             first_team_player2_id="006951d4-37b2-48eb-85a2-af9463a1e7aa",
-            first_team_player3_id=None if client_data.game_mode == GameModeModel.mix_doubles else "006951d4-37b2-48eb-85a2-af9463a1e7aa",
-            first_team_player4_id=None if client_data.game_mode == GameModeModel.mix_doubles else "006951d4-37b2-48eb-85a2-af9463a1e7aa",
+            first_team_player3_id=None if client_data.game_mode == GameModeModel.mixed_doubles else "006951d4-37b2-48eb-85a2-af9463a1e7aa",
+            first_team_player4_id=None if client_data.game_mode == GameModeModel.mixed_doubles else "006951d4-37b2-48eb-85a2-af9463a1e7aa",
             second_team_id="60e1e056-3613-4846-afc9-514ea7b6adde",
             second_team_player1_id="0eb2f8a5-bc94-40f2-9e0c-6d1300f2e7b0",  # Set the ID of the player to be used in AI matches as default
             second_team_player2_id="0eb2f8a5-bc94-40f2-9e0c-6d1300f2e7b0",
-            second_team_player3_id=None if client_data.game_mode == GameModeModel.mix_doubles else "0eb2f8a5-bc94-40f2-9e0c-6d1300f2e7b0",
-            second_team_player4_id=None if client_data.game_mode == GameModeModel.mix_doubles else "0eb2f8a5-bc94-40f2-9e0c-6d1300f2e7b0",
+            second_team_player3_id=None if client_data.game_mode == GameModeModel.mixed_doubles else "0eb2f8a5-bc94-40f2-9e0c-6d1300f2e7b0",
+            second_team_player4_id=None if client_data.game_mode == GameModeModel.mixed_doubles else "0eb2f8a5-bc94-40f2-9e0c-6d1300f2e7b0",
             winner_team_id=None,
             score_id=score_id,
             time_limit=client_data.time_limit,
@@ -263,15 +263,15 @@ class BaseServer:
             tournament_id=tournament_id,
             match_name=client_data.match_name,
             game_mode=client_data.game_mode.value,
-            mix_doubles_settings=(
-                MatchMixDoublesSettingsSchema(
+            mixed_doubles_settings=(
+                MatchMixedDoublesSettingsSchema(
                     positioned_stones_pattern=int(client_data.positioned_stones_pattern),
                     team0_power_play_end=None,
                     team1_power_play_end=None,
                     # Per rules: end 0 selector is the hammer team (team1 = second_team_id).
                     end_setup_team_ids=[UUID(str("60e1e056-3613-4846-afc9-514ea7b6adde"))],
                 )
-                if client_data.game_mode == GameModeModel.mix_doubles
+                if client_data.game_mode == GameModeModel.mixed_doubles
                 else None
             ),
             created_at=datetime.now(),
@@ -333,12 +333,12 @@ class DCServer:
             )
 
         # match_data.game_mode is stored as a plain string in DB.
-        # We compare it with the Enum's `.value` (e.g. "mix_doubles").
-        is_mix_doubles = match_data is not None and match_data.game_mode == GameModeModel.mix_doubles.value
+        # We compare it with the Enum's `.value` (e.g. "mixed_doubles").
+        is_mixed_doubles = match_data is not None and match_data.game_mode == GameModeModel.mixed_doubles.value
 
         # Mixed doubles uses only 2 players per team.
         # If the client sends player3/player4 anyway, fail fast instead of silently ignoring them.
-        if is_mix_doubles and (team_config_data.player3 is not None or team_config_data.player4 is not None):
+        if is_mixed_doubles and (team_config_data.player3 is not None or team_config_data.player4 is not None):
             raise bad_request("Mixed doubles uses only player1/player2; player3/player4 must be omitted.")
 
         if team_config_data.use_default_config:
@@ -364,14 +364,14 @@ class DCServer:
 
         # Standard requires 4 players; mixed doubles uses only 2.
         # TeamModel allows player3/player4 to be omitted for mixed doubles.
-        if not is_mix_doubles and (team_config_data.player3 is None or team_config_data.player4 is None):
+        if not is_mixed_doubles and (team_config_data.player3 is None or team_config_data.player4 is None):
             raise bad_request("player3 and player4 are required for standard mode.")
 
         # Build the list of players to register.
         # Avoid getattr("player{i}") to keep types explicit and prevent silent None handling.
         player_models = (
             [team_config_data.player1, team_config_data.player2]
-            if is_mix_doubles
+            if is_mixed_doubles
             else [
                 team_config_data.player1,
                 team_config_data.player2,
@@ -418,7 +418,7 @@ class DCServer:
             # Mixed doubles rule: end 0 positioned-stones selector is the hammer team (team1 / second_team).
             # If team1 registers as a different team_id, reflect it into end_setup_team_ids[0]
             # as long as the match hasn't started the first end yet.
-            if is_mix_doubles:
+            if is_mixed_doubles:
                 latest_state = await match_db.read_latest_state_data(match_id)
                 if (
                     latest_state is not None
@@ -561,7 +561,7 @@ class DCServer:
         next_end_selector_team_id: UUID | None = None
 
         # Check player ID
-        if match_data.game_mode == GameModeModel.mix_doubles.value:
+        if match_data.game_mode == GameModeModel.mixed_doubles.value:
             # Mixed doubles uses 2 players per team.
             # Per team per end (5 stones): Player1 throws 1st + 5th, Player2 throws 2nd-4th.
             shot_index_for_team = shot_per_team
@@ -665,7 +665,7 @@ class DCServer:
             angular_velocity=shot_info.angular_velocity,
         )
 
-        # Count of stones depends on game mode(standard: 8, mix_doubles: 6)
+        # Count of stones depends on game mode(standard: 8, mixed_doubles: 6)
         stone_count = stone_count_per_team(match_data.game_mode)
 
         stone_coordinate = {
@@ -689,7 +689,7 @@ class DCServer:
             data=stone_coordinate,
         )
 
-        # total_shots_per_end depends on game mode(standard: 16, mix_doubles: 10)
+        # total_shots_per_end depends on game mode(standard: 16, mixed_doubles: 10)
         total_shots_per_end = get_total_shots_per_end(match_data.game_mode)
 
         # The shot is the last shot of the "end"
@@ -735,13 +735,13 @@ class DCServer:
 
             # Mixed doubles: decide next end's positioned-stones selector.
             # We persist it only if the match continues (winner not decided), right before we create the next end state.
-            if match_data.game_mode == GameModeModel.mix_doubles.value:
+            if match_data.game_mode == GameModeModel.mixed_doubles.value:
                 current_selector = None
                 if (
-                    match_data.mix_doubles_settings is not None
-                    and getattr(match_data.mix_doubles_settings, "end_setup_team_ids", None) is not None
+                    match_data.mixed_doubles_settings is not None
+                    and getattr(match_data.mixed_doubles_settings, "end_setup_team_ids", None) is not None
                 ):
-                    ids = match_data.mix_doubles_settings.end_setup_team_ids
+                    ids = match_data.mixed_doubles_settings.end_setup_team_ids
                     if isinstance(ids, list) and 0 <= int(end_number) < len(ids):
                         current_selector = ids[int(end_number)]
 
@@ -805,7 +805,7 @@ class DCServer:
             winner_team_id=winner_team_id,
             match_id=match_id,
             end_number=pre_state_data.end_number,
-            shot_number=shot_per_team,
+            team_shot_number=shot_per_team,
             total_shot_number=total_shot_number,
             first_team_remaining_time=team0_remaining_time,
             second_team_remaining_time=team1_remaining_time,
@@ -838,7 +838,7 @@ class DCServer:
 
         if total_shot_number == total_shots_per_end and winner_team_id is None:
             if (
-                match_data.game_mode == GameModeModel.mix_doubles.value
+                match_data.game_mode == GameModeModel.mixed_doubles.value
                 and next_end_selector_team_id is not None
             ):
                 await match_db.set_end_setup_team_for_end(
@@ -868,10 +868,10 @@ class DCServer:
         if match_data is None or latest_state is None:
             raise not_found("Match not found.")
 
-        if match_data.game_mode != GameModeModel.mix_doubles.value:
-            raise bad_request("end-setup is only for mix_doubles.")
+        if match_data.game_mode != GameModeModel.mixed_doubles.value:
+            raise bad_request("end-setup is only for mixed_doubles.")
 
-        if match_data.mix_doubles_settings is None:
+        if match_data.mixed_doubles_settings is None:
             raise conflict("Mixed doubles settings missing.")
 
         if latest_state.winner_team_id is not None:
@@ -883,7 +883,7 @@ class DCServer:
             raise conflict("End already started.")
 
         try:
-            setup_state_id = await match_db.perform_mix_doubles_end_setup(
+            setup_state_id = await match_db.perform_mixed_doubles_end_setup(
                 match_data=match_data,
                 latest_state=latest_state,
                 match_team_name=match_team_name,

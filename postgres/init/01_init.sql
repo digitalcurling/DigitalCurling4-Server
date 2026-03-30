@@ -79,10 +79,10 @@ CREATE TABLE IF NOT EXISTS match_data (
 
 ALTER TABLE match_data
   ADD CONSTRAINT chk_match_game_mode
-    CHECK (game_mode IN ('standard', 'mix_doubles'));
+    CHECK (game_mode IN ('standard', 'mixed_doubles'));
 
--- Mixed Doubles Settings (only exists for game_mode='mix_doubles')
-CREATE TABLE IF NOT EXISTS match_mix_doubles_settings (
+-- Mixed Doubles Settings (only exists for game_mode='mixed_doubles')
+CREATE TABLE IF NOT EXISTS match_mixed_doubles_settings (
     match_id UUID PRIMARY KEY,
   positioned_stones_pattern INTEGER NOT NULL,
     team0_power_play_end INTEGER NULL,
@@ -91,11 +91,11 @@ CREATE TABLE IF NOT EXISTS match_mix_doubles_settings (
     end_setup_team_ids JSONB NOT NULL DEFAULT '[]'::jsonb
 );
 
-ALTER TABLE match_mix_doubles_settings
+ALTER TABLE match_mixed_doubles_settings
   ADD CONSTRAINT chk_md_settings_pattern
     CHECK (positioned_stones_pattern BETWEEN 0 AND 5);
 
-ALTER TABLE match_mix_doubles_settings
+ALTER TABLE match_mixed_doubles_settings
   ADD CONSTRAINT chk_md_settings_pp_end
     CHECK (
       (team0_power_play_end IS NULL OR team0_power_play_end >= 0)
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS state (
     winner_team_id UUID,
     match_id UUID DEFAULT gen_random_uuid(),
     end_number INTEGER,
-    shot_number INTEGER,
+    team_shot_number INTEGER,
     total_shot_number INTEGER,
     first_team_remaining_time DOUBLE PRECISION,
     second_team_remaining_time DOUBLE PRECISION,
@@ -170,8 +170,8 @@ ALTER TABLE state
   ADD CONSTRAINT fk_state_stone_coord
     FOREIGN KEY(stone_coordinate_id) REFERENCES stone_coordinate(stone_coordinate_id) ON DELETE CASCADE;
 
--- match_mix_doubles_settings → match_data
-ALTER TABLE match_mix_doubles_settings
+-- match_mixed_doubles_settings → match_data
+ALTER TABLE match_mixed_doubles_settings
   ADD CONSTRAINT fk_md_settings_match
     FOREIGN KEY(match_id) REFERENCES match_data(match_id) ON DELETE CASCADE;
 
@@ -184,4 +184,4 @@ CREATE INDEX IF NOT EXISTS idx_match_data_match_name_started_at
 
 -- Efficient per-end retrieval and ordering.
 CREATE INDEX IF NOT EXISTS idx_state_match_end_shot
-  ON state (match_id, end_number, shot_number);
+  ON state (match_id, end_number, team_shot_number);

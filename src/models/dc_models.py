@@ -17,7 +17,7 @@ class AppliedRuleModel(str, Enum):
 
 class GameModeModel(str, Enum):
     standard = "standard"
-    mix_doubles = "mix_doubles"
+    mixed_doubles = "mixed_doubles"
 
 
 class TournamentModel(BaseModel):
@@ -46,8 +46,7 @@ class CoordinateDataModel(BaseModel):
 
 
 class StoneCoordinateModel(BaseModel):
-    data: Dict[str, List[CoordinateDataModel]]  # フラットなDict型
-
+    data: Dict[str, List[CoordinateDataModel]]  # Flattened coordinate map per team.
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -69,7 +68,7 @@ class PowerPlayEndModel(BaseModel):
     team1: int | None = None
 
 
-class MixDoublesSettingsModel(BaseModel):
+class MixedDoublesSettingsModel(BaseModel):
     end_setup_team: str
     positioned_stones_pattern: int
     power_play_end: PowerPlayEndModel
@@ -94,14 +93,14 @@ class PositionedStonesRequestModel(BaseModel):
 class StateModel(BaseModel):
     winner_team: str | None
     end_number: int
-    shot_number: int | None
+    team_shot_number: int | None
     total_shot_number: int | None
     next_shot_team: str | None
     first_team_remaining_time: float
     second_team_remaining_time: float
     first_team_extra_end_remaining_time: float
     second_team_extra_end_remaining_time: float
-    mix_doubles_settings: Optional[MixDoublesSettingsModel] = None
+    mixed_doubles_settings: Optional[MixedDoublesSettingsModel] = None
     last_move: Optional[ShotInfoModel] = None
     stone_coordinate: Optional[StoneCoordinateModel] = None
     score: Optional[ScoreModel] = None
@@ -146,7 +145,7 @@ class MatchModel(BaseModel):
     match_name: str
     applied_rule: AppliedRuleModel
     game_mode: Optional[GameModeModel] = None
-    mix_doubles_settings: Optional[MixDoublesSettingsModel] = None
+    mixed_doubles_settings: Optional[MixedDoublesSettingsModel] = None
     score: Optional[ScoreModel] = None
     simulator: Optional[PhysicalSimulatorModel] = None
     tournament: Optional[TournamentModel] = None

@@ -116,9 +116,9 @@ class Match(Base):
         cascade="all, delete",
     )
 
-    mix_doubles_settings = relationship(
-        "MatchMixDoublesSettings",
-        primaryjoin="Match.match_id == foreign(MatchMixDoublesSettings.match_id)",
+    mixed_doubles_settings = relationship(
+        "MatchMixedDoublesSettings",
+        primaryjoin="Match.match_id == foreign(MatchMixedDoublesSettings.match_id)",
         back_populates="match",
         cascade="all, delete",
         uselist=False,
@@ -126,8 +126,8 @@ class Match(Base):
 
 
 
-class MatchMixDoublesSettings(Base):
-    __tablename__ = "match_mix_doubles_settings"
+class MatchMixedDoublesSettings(Base):
+    __tablename__ = "match_mixed_doubles_settings"
 
     match_id = Column(Uuid, ForeignKey("match_data.match_id", ondelete="CASCADE"), primary_key=True)
     positioned_stones_pattern = Column(Integer, nullable=False)
@@ -139,8 +139,8 @@ class MatchMixDoublesSettings(Base):
 
     match = relationship(
         "Match",
-        primaryjoin="foreign(MatchMixDoublesSettings.match_id) == Match.match_id",
-        back_populates="mix_doubles_settings",
+        primaryjoin="foreign(MatchMixedDoublesSettings.match_id) == Match.match_id",
+        back_populates="mixed_doubles_settings",
     )
 
 
@@ -232,7 +232,7 @@ class State(Base):
     winner_team_id = Column(Uuid, nullable=True)
     match_id = Column(Uuid, default=uuid7)
     end_number = Column(Integer)
-    shot_number = Column(Integer)
+    team_shot_number = Column(Integer)
     total_shot_number = Column(Integer)
     first_team_remaining_time = Column(Float)
     second_team_remaining_time = Column(Float)

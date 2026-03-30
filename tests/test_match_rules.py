@@ -10,12 +10,12 @@ from src.domain.match_rules import (
 
 def test_stone_count_per_team():
     assert stone_count_per_team("standard") == 8
-    assert stone_count_per_team("mix_doubles") == 6
+    assert stone_count_per_team("mixed_doubles") == 6
 
 
 def test_total_shots_per_end():
     assert total_shots_per_end("standard") == 16
-    assert total_shots_per_end("mix_doubles") == 10
+    assert total_shots_per_end("mixed_doubles") == 10
 
 
 def test_generate_reset_stone_coordinate_data_standard():
@@ -27,8 +27,8 @@ def test_generate_reset_stone_coordinate_data_standard():
     assert all(coord == {"x": 0.0, "y": 0.0} for coord in data["team1"])
 
 
-def test_generate_reset_stone_coordinate_data_mix_doubles():
-    data = generate_reset_stone_coordinate_data("mix_doubles")
+def test_generate_reset_stone_coordinate_data_mixed_doubles():
+    data = generate_reset_stone_coordinate_data("mixed_doubles")
     assert set(data.keys()) == {"team0", "team1"}
     assert len(data["team0"]) == 6
     assert len(data["team1"]) == 6

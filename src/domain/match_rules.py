@@ -10,7 +10,7 @@ Rule of thumb:
 
 import numpy as np
 
-MIX_DOUBLES_TOTAL_SHOTS_PER_END = 10
+MIXED_DOUBLES_TOTAL_SHOTS_PER_END = 10
 STANDARD_TOTAL_SHOTS_PER_END = 16
 
 # ==============================================================================
@@ -48,15 +48,15 @@ MD_POWER_PLAY_GUARD = [
 
 def stone_count_per_team(game_mode: str) -> int:
     """Return stone count per team for the given mode."""
-    if game_mode == "mix_doubles":
+    if game_mode == "mixed_doubles":
         return 6
     return 8
 
 
 def total_shots_per_end(game_mode: str) -> int:
     """Return total shots per end for the given mode."""
-    if game_mode == "mix_doubles":
-        return MIX_DOUBLES_TOTAL_SHOTS_PER_END
+    if game_mode == "mixed_doubles":
+        return MIXED_DOUBLES_TOTAL_SHOTS_PER_END
     return STANDARD_TOTAL_SHOTS_PER_END
 
 

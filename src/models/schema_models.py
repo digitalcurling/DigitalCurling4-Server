@@ -5,6 +5,13 @@ from datetime import datetime
 
 
 class TournamentSchema(BaseModel):
+    """Tournament metadata used by match records.
+
+    Attributes:
+        tournament_id: Unique identifier of the tournament.
+        tournament_name: Display name of the tournament.
+    """
+
     tournament_id: UUID
     tournament_name: str
 
@@ -12,6 +19,13 @@ class TournamentSchema(BaseModel):
 
 
 class PhysicalSimulatorSchema(BaseModel):
+    """Physical simulator metadata linked to a match.
+
+    Attributes:
+        physical_simulator_id: Unique identifier of the simulator profile.
+        simulator_name: Display name of the simulator profile.
+    """
+
     physical_simulator_id: UUID
     simulator_name: str
 
@@ -19,6 +33,17 @@ class PhysicalSimulatorSchema(BaseModel):
 
 
 class PlayerSchema(BaseModel):
+    """Player parameters used by simulation and matchmaking.
+
+    Attributes:
+        player_id: Unique identifier of the player.
+        team_id: Team identifier the player belongs to.
+        max_velocity: Maximum translational velocity available to the player.
+        shot_std_dev: Standard deviation of shot speed error.
+        angle_std_dev: Standard deviation of shot angle error.
+        player_name: Display name of the player.
+    """
+
     player_id: UUID
     team_id: UUID
     max_velocity: float
@@ -30,11 +55,25 @@ class PlayerSchema(BaseModel):
 
 
 class TrajectorySchema(BaseModel):
+    """Serialized trajectory data for a delivered shot.
+
+    Attributes:
+        trajectory_id: Unique identifier of the trajectory.
+        trajectory_data: JSON payload describing motion over time.
+    """
+
     trajectory_id: UUID
     trajectory_data: Json
 
 
 class StoneCoordinateSchema(BaseModel):
+    """Stone positions for a state snapshot.
+
+    Attributes:
+        stone_coordinate_id: Unique identifier of the coordinate snapshot.
+        data: Mapping of stone identifiers to board coordinates.
+    """
+
     stone_coordinate_id: UUID
     data: dict
 
@@ -42,6 +81,14 @@ class StoneCoordinateSchema(BaseModel):
 
 
 class ScoreSchema(BaseModel):
+    """Cumulative or per-end score arrays for both teams.
+
+    Attributes:
+        score_id: Unique identifier of the score record.
+        team0: Score list for the first team.
+        team1: Score list for the second team.
+    """
+
     score_id: UUID
     team0: list
     team1: list
@@ -50,6 +97,22 @@ class ScoreSchema(BaseModel):
 
 
 class ShotInfoSchema(BaseModel):
+    """Shot execution details and measured outcomes.
+
+    Attributes:
+        shot_id: Unique identifier of the shot record.
+        player_id: Player who delivered the shot.
+        team_id: Team of the throwing player.
+        trajectory_id: Linked trajectory identifier.
+        pre_shot_state_id: State identifier immediately before the shot.
+        post_shot_state_id: State identifier immediately after the shot.
+        actual_translational_velocity: Observed translational velocity.
+        actual_shot_angle: Observed release angle.
+        translational_velocity: Requested translational velocity.
+        angular_velocity: Requested angular velocity.
+        shot_angle: Requested release angle.
+    """
+
     shot_id: UUID
     player_id: UUID
     team_id: UUID
@@ -66,11 +129,33 @@ class ShotInfoSchema(BaseModel):
 
 
 class StateSchema(BaseModel):
+    """Game state snapshot for a specific end and shot timing.
+
+    Attributes:
+        state_id: Unique identifier of the state snapshot.
+        winner_team_id: Match winner if the game has finished.
+        match_id: Parent match identifier.
+        end_number: End index of this state.
+        team_shot_number: Shot index within the current end.
+        total_shot_number: Total number of shots in the current end.
+        first_team_remaining_time: Remaining thinking time for the first team.
+        second_team_remaining_time: Remaining thinking time for the second team.
+        first_team_extra_end_remaining_time: Remaining extra-end time for the first team.
+        second_team_extra_end_remaining_time: Remaining extra-end time for the second team.
+        stone_coordinate_id: Linked stone coordinate record.
+        score_id: Linked score record.
+        shot_id: Linked shot record when available.
+        next_shot_team_id: Team that should throw next.
+        created_at: Creation timestamp of this state snapshot.
+        stone_coordinate: Embedded stone coordinates if loaded.
+        score: Embedded score if loaded.
+    """
+
     state_id: UUID
     winner_team_id: UUID | None
     match_id: UUID
     end_number: int
-    shot_number: int | None
+    team_shot_number: int | None
     total_shot_number: int | None
     first_team_remaining_time: float
     second_team_remaining_time: float
@@ -87,7 +172,16 @@ class StateSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class MatchMixDoublesSettingsSchema(BaseModel):
+class MatchMixedDoublesSettingsSchema(BaseModel):
+    """Match settings specific to mixed doubles mode.
+
+    Attributes:
+        positioned_stones_pattern: Initial positioned-stones pattern index.
+        team0_power_play_end: Selected power-play end for the first team.
+        team1_power_play_end: Selected power-play end for the second team.
+        end_setup_team_ids: Team order used when preparing each end.
+    """
+
     positioned_stones_pattern: int
     team0_power_play_end: int | None = None
     team1_power_play_end: int | None = None
@@ -97,6 +191,40 @@ class MatchMixDoublesSettingsSchema(BaseModel):
 
 
 class MatchDataSchema(BaseModel):
+    """Primary match record returned by REST APIs.
+
+    Attributes:
+        match_id: Unique identifier of the match.
+        first_team_name: Display name of the first team.
+        second_team_name: Display name of the second team.
+        first_team_id: Identifier of the first team.
+        first_team_player1_id: First player identifier of the first team.
+        first_team_player2_id: Second player identifier of the first team.
+        first_team_player3_id: Third player identifier of the first team when used.
+        first_team_player4_id: Fourth player identifier of the first team when used.
+        second_team_id: Identifier of the second team.
+        second_team_player1_id: First player identifier of the second team.
+        second_team_player2_id: Second player identifier of the second team.
+        second_team_player3_id: Third player identifier of the second team when used.
+        second_team_player4_id: Fourth player identifier of the second team when used.
+        winner_team_id: Winner identifier when the match is decided.
+        score_id: Linked score identifier.
+        time_limit: Thinking-time limit for regular ends.
+        extra_end_time_limit: Thinking-time limit for extra ends.
+        standard_end_count: Number of scheduled ends.
+        physical_simulator_id: Simulator profile identifier.
+        applied_rule: Applied ruleset identifier.
+        tournament_id: Tournament identifier.
+        match_name: Human-readable match name.
+        game_mode: Match mode, either standard or mixed_doubles.
+        created_at: Match creation timestamp.
+        started_at: Match start timestamp.
+        score: Embedded score model if loaded.
+        tournament: Embedded tournament model if loaded.
+        simulator: Embedded simulator model if loaded.
+        mixed_doubles_settings: Embedded mixed doubles settings if loaded.
+    """
+
     match_id: UUID
     first_team_name: str | None
     second_team_name: str | None
@@ -120,18 +248,32 @@ class MatchDataSchema(BaseModel):
     applied_rule: int
     tournament_id: UUID
     match_name: str
-    game_mode: Literal["standard", "mix_doubles"] = "standard"
+    game_mode: Literal["standard", "mixed_doubles"] = "standard"
     created_at: datetime
     started_at: datetime
     score: Optional[ScoreSchema] = None
     tournament: Optional[TournamentSchema] = None
     simulator: Optional[PhysicalSimulatorSchema] = None
-    mix_doubles_settings: Optional[MatchMixDoublesSettingsSchema] = None
+    mixed_doubles_settings: Optional[MatchMixedDoublesSettingsSchema] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class TeamSchema(BaseModel):
+    """Team composition with optional embedded player data.
+
+    Attributes:
+        player1_id: Identifier of player slot 1.
+        player2_id: Identifier of player slot 2.
+        player3_id: Identifier of player slot 3.
+        player4_id: Identifier of player slot 4.
+        team_name: Display name of the team.
+        player1: Embedded player model for slot 1 if loaded.
+        player2: Embedded player model for slot 2 if loaded.
+        player3: Embedded player model for slot 3 if loaded.
+        player4: Embedded player model for slot 4 if loaded.
+    """
+
     player1_id: UUID
     player2_id: UUID
     player3_id: UUID

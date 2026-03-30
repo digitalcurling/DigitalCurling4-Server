@@ -19,7 +19,7 @@ from src.models.dc_models import PositionedStonesModel, GameModeModel
 from src.models.basic_authentication_models import UserModel
 from src.models.schema_models import (
     MatchDataSchema,
-    MatchMixDoublesSettingsSchema,
+    MatchMixedDoublesSettingsSchema,
     ScoreSchema,
     StateSchema,
     StoneCoordinateSchema,
@@ -70,14 +70,14 @@ def _match_data(*, game_mode: str) -> MatchDataSchema:
         created_at=datetime.now(),
         started_at=datetime.now(),
         score=ScoreSchema(score_id=score_id, team0=[0] * 9, team1=[0] * 9),
-        mix_doubles_settings=(
-            MatchMixDoublesSettingsSchema(
+        mixed_doubles_settings=(
+            MatchMixedDoublesSettingsSchema(
                 positioned_stones_pattern=0,
                 team0_power_play_end=None,
                 team1_power_play_end=None,
                 end_setup_team_ids=[team1_id],
             )
-            if game_mode == GameModeModel.mix_doubles.value
+            if game_mode == GameModeModel.mixed_doubles.value
             else None
         ),
     )
@@ -96,7 +96,7 @@ def _latest_state(*, match_id: UUID, started: bool, winner_team_id: UUID | None 
         winner_team_id=winner_team_id,
         match_id=match_id,
         end_number=0,
-        shot_number=0 if started else None,
+        team_shot_number=0 if started else None,
         total_shot_number=0 if started else None,
         first_team_remaining_time=300.0,
         second_team_remaining_time=300.0,
@@ -140,7 +140,7 @@ def test_end_setup_rejects_standard_mode(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_end_setup_conflict_if_end_already_started(monkeypatch: pytest.MonkeyPatch):
-    md = _match_data(game_mode=GameModeModel.mix_doubles.value)
+    md = _match_data(game_mode=GameModeModel.mixed_doubles.value)
     latest = _latest_state(match_id=md.match_id, started=True)
 
     async def fake_check_match_data(*args, **kwargs):
@@ -168,7 +168,7 @@ def test_end_setup_conflict_if_end_already_started(monkeypatch: pytest.MonkeyPat
 
 
 def test_end_setup_calls_service_and_publishes_state(monkeypatch: pytest.MonkeyPatch):
-    md = _match_data(game_mode=GameModeModel.mix_doubles.value)
+    md = _match_data(game_mode=GameModeModel.mixed_doubles.value)
     latest = _latest_state(match_id=md.match_id, started=False)
     setup_state_id = UUID("00000000-0000-0000-0000-000000000999")
 
@@ -181,7 +181,7 @@ def test_end_setup_calls_service_and_publishes_state(monkeypatch: pytest.MonkeyP
     async def fake_read_latest_state_data(match_id):
         return latest
 
-    async def fake_perform_mix_doubles_end_setup(**kwargs):
+    async def fake_perform_mixed_doubles_end_setup(**kwargs):
         return setup_state_id
 
     published = {}
@@ -194,7 +194,7 @@ def test_end_setup_calls_service_and_publishes_state(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr("src.routers.match.basic_auth.check_match_data", fake_check_match_data)
     monkeypatch.setattr("src.services.match_db.read_match_data", fake_read_match_data)
     monkeypatch.setattr("src.services.match_db.read_latest_state_data", fake_read_latest_state_data)
-    monkeypatch.setattr("src.services.match_db.perform_mix_doubles_end_setup", fake_perform_mix_doubles_end_setup)
+    monkeypatch.setattr("src.services.match_db.perform_mixed_doubles_end_setup", fake_perform_mixed_doubles_end_setup)
     monkeypatch.setattr("src.routers.match.redis.publish", fake_publish)
 
     client = TestClient(app)

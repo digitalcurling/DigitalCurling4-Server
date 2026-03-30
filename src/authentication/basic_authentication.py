@@ -59,7 +59,7 @@ class BasicAuthentication:
             if user_data is None:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid username",
+                    detail="Invalid credentials",
                     headers={"WWW-Authenticate": "Basic"},
                 )
 
@@ -70,7 +70,7 @@ class BasicAuthentication:
             if not secrets.compare_digest(hashed_password, user_data.hash_password):
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid password",
+                    detail="Invalid credentials",
                     headers={"WWW-Authenticate": "Basic"},
                 )
         return user_data

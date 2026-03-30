@@ -8,7 +8,7 @@ from src.models.dc_models import (
     StoneCoordinateModel,
     ShotInfoModel,
     PowerPlayEndModel,
-    MixDoublesSettingsModel,
+    MixedDoublesSettingsModel,
     GameModeModel,
 )
 from src.models.schema_models import (
@@ -62,13 +62,13 @@ class DataConverter:
             )
 
         # Determine if it is pre-end setup for mixed doubles
-        is_pre_end_setup = match_data.game_mode == GameModeModel.mix_doubles.value and state_data.next_shot_team_id is None
+        is_pre_end_setup = match_data.game_mode == GameModeModel.mixed_doubles.value and state_data.next_shot_team_id is None
 
-        shot_number = state_data.shot_number
+        team_shot_number = state_data.team_shot_number
         total_shot_number = state_data.total_shot_number
-        # If it is pre-end setup, set shot_number and total_shot_number to None
+        # If it is pre-end setup, set team_shot_number and total_shot_number to None
         if is_pre_end_setup:
-            shot_number = None
+            team_shot_number = None
             total_shot_number = None
 
         # To parse stone coordinates data
@@ -90,11 +90,11 @@ class DataConverter:
 
         end_setup_team_id = match_data.second_team_id
         if (
-            match_data.mix_doubles_settings is not None
-            and getattr(match_data.mix_doubles_settings, "end_setup_team_ids", None) is not None
+            match_data.mixed_doubles_settings is not None
+            and getattr(match_data.mixed_doubles_settings, "end_setup_team_ids", None) is not None
             and state_data is not None
         ):
-            ids = match_data.mix_doubles_settings.end_setup_team_ids
+            ids = match_data.mixed_doubles_settings.end_setup_team_ids
             if isinstance(ids, list) and 0 <= int(state_data.end_number) < len(ids):
                 # JSONB stores UUIDs as strings; be defensive and normalize to UUID.
                 end_setup_team_id = UUID(str(ids[int(state_data.end_number)]))
@@ -104,15 +104,15 @@ class DataConverter:
             first_team_name=match_data.first_team_name,
             second_team_name=match_data.second_team_name,
             end_number=state_data.end_number,
-            shot_number=shot_number,
+            team_shot_number=team_shot_number,
             total_shot_number=total_shot_number,
             next_shot_team=next_shot_team,
             first_team_remaining_time=state_data.first_team_remaining_time,
             second_team_remaining_time=state_data.second_team_remaining_time,
             first_team_extra_end_remaining_time=state_data.first_team_extra_end_remaining_time,
             second_team_extra_end_remaining_time=state_data.second_team_extra_end_remaining_time,
-            mix_doubles_settings=(
-                MixDoublesSettingsModel(
+            mixed_doubles_settings=(
+                MixedDoublesSettingsModel(
                     end_setup_team=(
                         "team0"
                         if (
@@ -124,14 +124,14 @@ class DataConverter:
                         else "team1"
                     ),
                     positioned_stones_pattern=int(
-                        match_data.mix_doubles_settings.positioned_stones_pattern
+                        match_data.mixed_doubles_settings.positioned_stones_pattern
                     ),
                     power_play_end=PowerPlayEndModel(
-                        team0=match_data.mix_doubles_settings.team0_power_play_end,
-                        team1=match_data.mix_doubles_settings.team1_power_play_end,
+                        team0=match_data.mixed_doubles_settings.team0_power_play_end,
+                        team1=match_data.mixed_doubles_settings.team1_power_play_end,
                     ),
                 )
-                if match_data.mix_doubles_settings is not None
+                if match_data.mixed_doubles_settings is not None
                 else None
             ),
             last_move=last_move,

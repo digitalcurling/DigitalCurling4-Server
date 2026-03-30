@@ -1,4 +1,3 @@
-import asyncio
 import json
 import logging
 from typing import List, AsyncGenerator
@@ -8,7 +7,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from src.crud import ReadData, UpdateData
 from src.models.schema_models import StateSchema, MatchDataSchema
-from src.models.dc_models import GameModeModel, StateModel
+from src.models.dc_models import StateModel
 from src.converter import DataConverter
 
 HEART_BEAT = 30
@@ -82,20 +81,21 @@ class RedisSubscriber:
 
 
     async def _initial_sync_for_viewer(self) -> AsyncGenerator[str, None]:
-        """Viewer initial sync: publish only the latest board once.
+        """Viewer initial sync.
 
-        Viewers do not participate in presence/initial barrier coordination.
+        Behavior:
+        - Determine the current end by reading the latest state.
+        - Fetch all state rows in that end and replay them in order.
+          Earlier states are sent as `state_update`, and the last as `latest_state_update`.
+        - Viewer does not participate in presence/initial barrier coordination.
+
+        Note: Unlike player initial sync, viewer must not mutate DB state.
         """
         async with self.Session() as session:
-            match_data = await read_data.read_match_data(self.match_id, session)
+            match_data: MatchDataSchema | None = await read_data.read_match_data(self.match_id, session)
             latest_state_data: StateSchema | None = await read_data.read_latest_state_data(
                 self.match_id, session
             )
-            shot_info_data = None
-            if latest_state_data is not None:
-                shot_info_data = await read_data.read_last_shot_info_by_post_state_id(
-                    latest_state_data.state_id, session
-                )
 
         # Viewer can connect before the first state row exists.
         # Keep the SSE connection alive until we can send a proper board.
@@ -103,11 +103,57 @@ class RedisSubscriber:
             yield ": ping\n\n"
             return
 
-        latest_state_model: StateModel = data_converter.convert_stateschema_to_statemodel(
-            match_data, latest_state_data, shot_info_data
-        )
-        payload = json.dumps(latest_state_model.model_dump())
-        yield f"event: latest_state_update\ndata: {payload}\n\n"
+        # Replay all states of the current end.
+        async with self.Session() as session:
+            state_data_in_end = await read_data.read_state_data_in_end(
+                self.match_id, latest_state_data.end_number, session
+            )
+
+        if not state_data_in_end:
+            # Fallback: if the end history query returns nothing, at least send the latest board.
+            async with self.Session() as session:
+                shot_info_data = await read_data.read_last_shot_info_by_post_state_id(
+                    latest_state_data.state_id, session
+                )
+            latest_state_model: StateModel = data_converter.convert_stateschema_to_statemodel(
+                match_data, latest_state_data, shot_info_data
+            )
+            payload = json.dumps(latest_state_model.model_dump())
+            yield f"event: latest_state_update\ndata: {payload}\n\n"
+            return
+
+        sorted_states = self._sort_states_for_replay(state_data_in_end)
+        for i, state_schema in enumerate(sorted_states):
+            async with self.Session() as session:
+                shot_info_data = await read_data.read_last_shot_info_by_post_state_id(
+                    state_schema.state_id, session
+                )
+
+            state_model: StateModel = data_converter.convert_stateschema_to_statemodel(
+                match_data, state_schema, shot_info_data
+            )
+            payload = json.dumps(state_model.model_dump())
+
+            if i == len(sorted_states) - 1:
+                yield f"event: latest_state_update\ndata: {payload}\n\n"
+            else:
+                yield f"event: state_update\ndata: {payload}\n\n"
+
+
+    @staticmethod
+    def _sort_states_for_replay(states: List[StateSchema]) -> List[StateSchema]:
+        """Stable sort for replay.
+
+        We primarily sort by team_shot_number. Because team_shot_number may be None (mixed doubles)
+        or duplicated in some flows, we use created_at and state_id as tie-breakers.
+        """
+        def key_fn(s: StateSchema) -> tuple[int, int, str]:
+            # None should come first in a replay (e.g., pre-setup states).
+            shot_key = -1 if s.team_shot_number is None else int(s.team_shot_number)
+            created_key = int(s.created_at.timestamp()) if getattr(s, "created_at", None) else 0
+            return (shot_key, created_key, str(s.state_id))
+
+        return sorted(list(states), key=key_fn)
 
 
     async def _initial_sync_for_player(

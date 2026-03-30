@@ -18,7 +18,7 @@ from src.models.schema_models import (
 )
 from src.models.schemas import (
     Match,
-    MatchMixDoublesSettings,
+    MatchMixedDoublesSettings,
     Score,
     State,
     StoneCoordinate,
@@ -285,21 +285,21 @@ class UpdateData:
 
 class ReadData:
     @staticmethod
-    async def read_mix_doubles_settings_row_for_update(
+    async def read_mixed_doubles_settings_row_for_update(
         match_id: UUID, session: AsyncSession
-    ) -> MatchMixDoublesSettings | None:
-        """Read MatchMixDoublesSettings row with row-level lock.
+    ) -> MatchMixedDoublesSettings | None:
+        """Read MatchMixedDoublesSettings row with row-level lock.
 
         This is intended for service-layer transactions (session.begin()) that need to
         update selector list / power play usage atomically.
 
         Returns:
-            MatchMixDoublesSettings | None: ORM row (NOT a Schema model).
+            MatchMixedDoublesSettings | None: ORM row (NOT a Schema model).
         """
 
         stmt = (
-            select(MatchMixDoublesSettings)
-            .where(MatchMixDoublesSettings.match_id == match_id)
+            select(MatchMixedDoublesSettings)
+            .where(MatchMixedDoublesSettings.match_id == match_id)
             .with_for_update()
         )
         result = await session.execute(stmt)
@@ -328,7 +328,7 @@ class ReadData:
                     joinedload(Match.score),
                     joinedload(Match.tournament),
                     joinedload(Match.simulator),
-                    joinedload(Match.mix_doubles_settings),
+                    joinedload(Match.mixed_doubles_settings),
                 )
             )
             result = await session.execute(stmt)
@@ -434,7 +434,7 @@ class ReadData:
                     joinedload(State.score),
                 )
                 .where(State.match_id == match_id, State.end_number == end_number)
-                .order_by(State.shot_number)
+                .order_by(State.team_shot_number)
             )
             result = await session.execute(stmt)
             result = result.scalars().all()
@@ -739,11 +739,11 @@ class CreateData:
             )
 
             new_md_settings = None
-            if getattr(match, "mix_doubles_settings", None) is not None:
-                md = match.mix_doubles_settings
+            if getattr(match, "mixed_doubles_settings", None) is not None:
+                md = match.mixed_doubles_settings
                 # At match creation time, power play is always unused, so both values must be None (DB NULL).
                 # They are set to an end_number only when a team consumes power play during /end-setup.
-                new_md_settings = MatchMixDoublesSettings(
+                new_md_settings = MatchMixedDoublesSettings(
                     match_id=match.match_id,
                     positioned_stones_pattern=md.positioned_stones_pattern,
                     team0_power_play_end=None,
@@ -766,7 +766,14 @@ class CreateData:
 
         except Exception as e:
             await session.rollback()
-            logging.error(f"Failed to create match data: {e}")
+            logging.exception(
+                "Failed to create match data (match_id=%s, score_id=%s, simulator_id=%s, game_mode=%s): %s",
+                getattr(match, "match_id", None),
+                getattr(match, "score_id", None),
+                getattr(match, "physical_simulator_id", None),
+                getattr(match, "game_mode", None),
+                e,
+            )
             return False
 
     @staticmethod
@@ -788,7 +795,7 @@ class CreateData:
                 winner_team_id=state.winner_team_id,
                 match_id=state.match_id,
                 end_number=state.end_number,
-                shot_number=state.shot_number,
+                team_shot_number=state.team_shot_number,
                 total_shot_number=state.total_shot_number,
                 first_team_remaining_time=state.first_team_remaining_time,
                 second_team_remaining_time=state.second_team_remaining_time,
@@ -805,7 +812,14 @@ class CreateData:
             return True
         except Exception as e:
             await session.rollback()
-            logging.error(f"Failed to create state data: {e}")
+            logging.exception(
+                "Failed to create state data (state_id=%s, match_id=%s, end_number=%s, total_shot_number=%s): %s",
+                getattr(state, "state_id", None),
+                getattr(state, "match_id", None),
+                getattr(state, "end_number", None),
+                getattr(state, "total_shot_number", None),
+                e,
+            )
             return False
 
     @staticmethod
@@ -824,7 +838,7 @@ class CreateData:
             winner_team_id=state.winner_team_id,
             match_id=state.match_id,
             end_number=state.end_number,
-            shot_number=state.shot_number,
+            team_shot_number=state.team_shot_number,
             total_shot_number=state.total_shot_number,
             first_team_remaining_time=state.first_team_remaining_time,
             second_team_remaining_time=state.second_team_remaining_time,

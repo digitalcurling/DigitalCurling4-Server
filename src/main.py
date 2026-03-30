@@ -48,9 +48,19 @@ async def lifespan(app):
         physical_simulator_id=uuid4(), simulator_name="fcv1"
     )
     async with Session() as session:
-        await create_data.create_default_player_data(first_player, session)
-        await create_data.create_default_player_data(second_player, session)
-        await create_data.create_physical_simulator_data(simulator, session)
+        first_seed_ok = await create_data.create_default_player_data(first_player, session)
+        second_seed_ok = await create_data.create_default_player_data(second_player, session)
+        simulator_seed_ok = await create_data.create_physical_simulator_data(simulator, session)
+
+    if not (first_seed_ok and second_seed_ok and simulator_seed_ok):
+        logging.error(
+            "Startup seed failed (player1=%s, player2=%s, simulator=%s). "
+            "Refusing to start to avoid intermittent /matches failures.",
+            first_seed_ok,
+            second_seed_ok,
+            simulator_seed_ok,
+        )
+        raise RuntimeError("Startup seed failed.")
 
     # If the match data is expired, delete the match data
     scheduler.add_job(

@@ -8,7 +8,7 @@ import pytest
 from src.converter import DataConverter
 from src.models.schema_models import (
     MatchDataSchema,
-    MatchMixDoublesSettingsSchema,
+    MatchMixedDoublesSettingsSchema,
     ScoreSchema,
     StateSchema,
     StoneCoordinateSchema,
@@ -35,11 +35,11 @@ def _build_minimal_match_data(*, end_setup_team_ids: list, team0_id: UUID, team1
         applied_rule=2,
         tournament_id=UUID("00000000-0000-0000-0000-000000000004"),
         match_name="test",
-        game_mode="mix_doubles",
+        game_mode="mixed_doubles",
         created_at=datetime.now(),
         started_at=datetime.now(),
         score=ScoreSchema(score_id=UUID("00000000-0000-0000-0000-000000000002"), team0=[0] * 9, team1=[0] * 9),
-        mix_doubles_settings=MatchMixDoublesSettingsSchema(
+        mixed_doubles_settings=MatchMixedDoublesSettingsSchema(
             positioned_stones_pattern=0,
             team0_power_play_end=None,
             team1_power_play_end=None,
@@ -61,7 +61,7 @@ def _build_pre_end_setup_state(*, end_number: int) -> StateSchema:
         winner_team_id=None,
         match_id=UUID("00000000-0000-0000-0000-000000000001"),
         end_number=end_number,
-        shot_number=None,
+        team_shot_number=None,
         total_shot_number=None,
         first_team_remaining_time=300.0,
         second_team_remaining_time=300.0,
@@ -90,8 +90,8 @@ def test_converter_end_setup_team_uses_end_setup_team_ids_uuid_string_ok():
     state_data = _build_pre_end_setup_state(end_number=1)
 
     model = DataConverter().convert_stateschema_to_statemodel(match_data, state_data)
-    assert model.mix_doubles_settings is not None
-    assert model.mix_doubles_settings.end_setup_team == "team1"
+    assert model.mixed_doubles_settings is not None
+    assert model.mixed_doubles_settings.end_setup_team == "team1"
 
 
 def test_converter_end_setup_team_defaults_to_team1_when_missing_ids():
@@ -106,8 +106,8 @@ def test_converter_end_setup_team_defaults_to_team1_when_missing_ids():
     state_data = _build_pre_end_setup_state(end_number=0)
 
     model = DataConverter().convert_stateschema_to_statemodel(match_data, state_data)
-    assert model.mix_doubles_settings is not None
-    assert model.mix_doubles_settings.end_setup_team == "team1"
+    assert model.mixed_doubles_settings is not None
+    assert model.mixed_doubles_settings.end_setup_team == "team1"
 
 
 def test_converter_end_setup_team_out_of_range_uses_default_team1():
@@ -122,5 +122,5 @@ def test_converter_end_setup_team_out_of_range_uses_default_team1():
     state_data = _build_pre_end_setup_state(end_number=3)
 
     model = DataConverter().convert_stateschema_to_statemodel(match_data, state_data)
-    assert model.mix_doubles_settings is not None
-    assert model.mix_doubles_settings.end_setup_team == "team1"
+    assert model.mixed_doubles_settings is not None
+    assert model.mixed_doubles_settings.end_setup_team == "team1"
