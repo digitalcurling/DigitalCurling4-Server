@@ -15,6 +15,7 @@ from src.models.dc_models import PositionedStonesModel
 from src.models.schema_models import (
     MatchDataSchema,
     PlayerSchema,
+    ScoreSchema,
     ShotInfoSchema,
     StateSchema,
     StoneCoordinateSchema,
@@ -94,6 +95,60 @@ async def record_shot_result(
             await CreateData.add_shot_info_data(shot_info, session)
             await CreateData.add_state_data(post_state, session)
             await UpdateData.set_state_shot_id_no_commit(pre_state_id, shot_info.shot_id, session)
+
+
+async def record_last_shot_of_end(
+    shot_info: ShotInfoSchema,
+    post_state: StateSchema,
+    pre_state_id: UUID,
+    score_data: ScoreSchema,
+    next_end_initial_state: StateSchema | None,
+    next_end_selector_team_id: UUID | None,
+    match_id: UUID,
+) -> None:
+    """Atomically record the last shot of an end and all resulting DB state changes.
+
+    Combines score update + shot recording + next-end initial state creation into a
+    single transaction, eliminating the crash window that previously existed between
+    these separate commits.
+
+    Args:
+        shot_info: Shot info record for the last shot.
+        post_state: State after the last shot (may have winner_team_id set).
+        pre_state_id: State ID of the pre-shot state (will have shot_id linked).
+        score_data: Updated score to persist (same score_id as pre-state's score).
+        next_end_initial_state: Initial state for end N+1. None if match is over.
+        next_end_selector_team_id: Mixed doubles selector for end N+1. None for
+            standard mode or when the match is over.
+        match_id: Match ID (needed for MD settings row lookup).
+    """
+    async with Session() as session:
+        async with session.begin():
+            await UpdateData.update_score_no_commit(score_data, session)
+            await CreateData.add_shot_info_data(shot_info, session)
+            await CreateData.add_state_data(post_state, session)
+            await UpdateData.set_state_shot_id_no_commit(pre_state_id, shot_info.shot_id, session)
+
+            if next_end_initial_state is not None:
+                await CreateData.add_state_data(next_end_initial_state, session)
+
+            if next_end_selector_team_id is not None and next_end_initial_state is not None:
+                settings_row = await ReadData.read_mixed_doubles_settings_row_for_update(match_id, session)
+                if settings_row is None:
+                    raise RuntimeError("Mixed doubles settings row not found.")
+                next_end_number = next_end_initial_state.end_number
+                # IMPORTANT: JSONB returns a plain Python list — always copy before mutating.
+                selector_list = list(settings_row.end_setup_team_ids or [])
+                if next_end_number < len(selector_list):
+                    selector_list[next_end_number] = str(next_end_selector_team_id)
+                elif next_end_number == len(selector_list):
+                    selector_list.append(str(next_end_selector_team_id))
+                else:
+                    raise RuntimeError(
+                        f"end_setup_team_ids has a gap at index {next_end_number}; "
+                        f"current length={len(selector_list)}"
+                    )
+                settings_row.end_setup_team_ids = selector_list
 
 
 async def update_match_data_with_team_name(

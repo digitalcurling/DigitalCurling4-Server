@@ -67,7 +67,7 @@ PASS_WORD="pass1"
     docker network create dc_network
     ```
 
-1. If you want to run dc-server in production env, run the following comman
+1. If you want to run dc-server in production env, run the following command
 
     ```bash
     docker compose -f docker-compose.yml up --build

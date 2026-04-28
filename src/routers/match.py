@@ -5,7 +5,7 @@ from typing import List
 from uuid import UUID, uuid4
 from uuid6 import uuid7
 import numpy as np
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBasic
 from redis.asyncio import Redis
@@ -67,65 +67,47 @@ basic_auth = BasicAuthentication()
 stone_simulator = StoneSimulator()
 
 
-async def state_end_number_update(state_data: StateSchema, next_shot_team_id: UUID | None):
-    """Update the state data when the end number is updated
+def _build_next_end_initial_state(
+    post_state: StateSchema,
+    game_mode: str,
+    next_end_first_shot_team_id: UUID | None,
+) -> StateSchema:
+    """Build the initial StateSchema for end N+1 (in memory, no DB write).
 
-    Args:
-        state_data (StateSchema): The latest state data of the match which is the state data at the end of the "end"
-        next_shot_team_id (UUID): The team ID of the next shot
+    In mixed doubles the next_shot_team_id stays None until end-setup is performed.
+    In standard mode next_end_first_shot_team_id must be provided.
     """
-    
-    total_shot_number: int | None = 0
-
-    # In mixed doubles, we wait for an explicit end-setup command before allowing shots.
-    match_data: MatchDataSchema | None = await match_db.read_match_data(state_data.match_id)
-    if match_data is None:
-        raise not_found("Match not found.")
-
-    is_mixed_doubles = match_data.game_mode == GameModeModel.mixed_doubles.value
+    is_mixed_doubles = game_mode == GameModeModel.mixed_doubles.value
     if is_mixed_doubles:
-        next_shot_team_id = None
-        total_shot_number = None
-    elif next_shot_team_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="next_shot_team_id must not be None in standard mode.",
-        )
+        next_shot_team_id: UUID | None = None
+        total_shot_number: int | None = None
+        team_shot_number: int | None = None
+    else:
+        next_shot_team_id = next_end_first_shot_team_id
+        total_shot_number = 0
+        team_shot_number = 0
 
-    stone_coordinate: StoneCoordinateSchema = StoneCoordinateSchema(
+    stone_coordinate = StoneCoordinateSchema(
         stone_coordinate_id=uuid7(),
-        data=generate_reset_stone_coordinate_data(match_data.game_mode),
+        data=generate_reset_stone_coordinate_data(game_mode),
     )
-
-    state = StateSchema(
+    return StateSchema(
         state_id=uuid7(),
-        winner_team_id=state_data.winner_team_id,
-        match_id=state_data.match_id,
-        end_number=state_data.end_number + 1,
-        team_shot_number=None if total_shot_number is None else int(total_shot_number / 2),
+        winner_team_id=None,
+        match_id=post_state.match_id,
+        end_number=post_state.end_number + 1,
+        team_shot_number=team_shot_number,
         total_shot_number=total_shot_number,
-        first_team_remaining_time=state_data.first_team_remaining_time,
-        second_team_remaining_time=state_data.second_team_remaining_time,
-        first_team_extra_end_remaining_time=state_data.first_team_extra_end_remaining_time,
-        second_team_extra_end_remaining_time=state_data.second_team_extra_end_remaining_time,
+        first_team_remaining_time=post_state.first_team_remaining_time,
+        second_team_remaining_time=post_state.second_team_remaining_time,
+        first_team_extra_end_remaining_time=post_state.first_team_extra_end_remaining_time,
+        second_team_extra_end_remaining_time=post_state.second_team_extra_end_remaining_time,
         stone_coordinate_id=stone_coordinate.stone_coordinate_id,
-        score_id=state_data.score_id,
+        score_id=post_state.score_id,
         shot_id=None,
         next_shot_team_id=next_shot_team_id,
         created_at=datetime.now(),
         stone_coordinate=stone_coordinate,
-    )
-    await match_db.create_state_data(state)
-    channel = f"match:{state_data.match_id}"
-    await redis.publish(
-        channel,
-        json.dumps(
-            {
-                "type": "state_update",
-                "match_id": str(state_data.match_id),
-                "state_id": str(state.state_id),
-            }
-        ),
     )
 class BaseServer:
     """Endpoint class for initiating match."""
@@ -786,7 +768,6 @@ class DCServer:
                 team0=team0_score,
                 team1=team1_score,
             )
-            await match_db.update_score(score_data)
 
             if end_number >= match_data.standard_end_count - 1:
                 team0_total_score: int = calculate_total_score(team0_score)
@@ -818,35 +799,47 @@ class DCServer:
             created_at=datetime.now(),
             stone_coordinate=stone_coordinate_data,
         )
-        await match_db.record_shot_result(
-            shot_info=shot_info_data,
-            post_state=state_data,
-            pre_state_id=pre_state_data.state_id,
-        )
-
         channel = f"match:{match_id}"
-        await redis.publish(
-            channel,
-            json.dumps(
-                {
-                    "type": "state_update",
-                    "match_id": str(match_id),
-                    "state_id": str(state_data.state_id),
-                }
-            ),
-        )
 
-        if total_shot_number == total_shots_per_end and winner_team_id is None:
-            if (
-                match_data.game_mode == GameModeModel.mixed_doubles.value
-                and next_end_selector_team_id is not None
-            ):
-                await match_db.set_end_setup_team_for_end(
-                    match_id=match_id,
-                    end_number=end_number + 1,
-                    selector_team_id=next_end_selector_team_id,
+        if total_shot_number == total_shots_per_end:
+            # Last shot of the end: build the next-end initial state (if game continues),
+            # then persist everything in one atomic transaction.
+            next_end_initial_state: StateSchema | None = None
+            if winner_team_id is None:
+                next_end_initial_state = _build_next_end_initial_state(
+                    post_state=state_data,
+                    game_mode=match_data.game_mode,
+                    next_end_first_shot_team_id=next_end_first_shot_team_id,
                 )
-            await state_end_number_update(state_data, next_end_first_shot_team_id)
+            await match_db.record_last_shot_of_end(
+                shot_info=shot_info_data,
+                post_state=state_data,
+                pre_state_id=pre_state_data.state_id,
+                score_data=score_data,
+                next_end_initial_state=next_end_initial_state,
+                next_end_selector_team_id=next_end_selector_team_id if winner_team_id is None else None,
+                match_id=match_id,
+            )
+            await redis.publish(
+                channel,
+                json.dumps({"type": "state_update", "match_id": str(match_id), "state_id": str(state_data.state_id)}),
+            )
+            if next_end_initial_state is not None:
+                await redis.publish(
+                    channel,
+                    json.dumps({"type": "state_update", "match_id": str(match_id), "state_id": str(next_end_initial_state.state_id)}),
+                )
+        else:
+            # Mid-end shot: existing atomic recording is sufficient.
+            await match_db.record_shot_result(
+                shot_info=shot_info_data,
+                post_state=state_data,
+                pre_state_id=pre_state_data.state_id,
+            )
+            await redis.publish(
+                channel,
+                json.dumps({"type": "state_update", "match_id": str(match_id), "state_id": str(state_data.state_id)}),
+            )
 
 
     # ==============================================================================

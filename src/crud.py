@@ -207,7 +207,11 @@ class UpdateData:
             stmt = (
                 select(State)
                 .where(State.match_id == match_id)
-                .order_by(desc(State.created_at))
+                .order_by(
+                    desc(State.end_number),
+                    desc(State.total_shot_number).nullslast(),
+                    desc(State.state_id),
+                )
                 .limit(1)
             )
             result = await session.execute(stmt)
@@ -248,6 +252,17 @@ class UpdateData:
             await session.rollback()
             logging.error(f"Failed to update score data: {e}")
             return False
+
+    @staticmethod
+    async def update_score_no_commit(score: ScoreSchema, session: AsyncSession) -> None:
+        """Update score row without committing. For use inside session.begin() blocks."""
+        stmt = select(Score).where(Score.score_id == score.score_id)
+        result = await session.execute(stmt)
+        row = result.scalars().first()
+        if row is None:
+            raise RuntimeError(f"Score row not found while updating score: {score.score_id}")
+        row.team0 = score.team0
+        row.team1 = score.team1
 
     @staticmethod
     async def update_state_shot_id(state_id: UUID, shot_id: UUID, session: AsyncSession) -> bool:
@@ -396,7 +411,11 @@ class ReadData:
                     joinedload(State.score),
                 )
                 .where(State.match_id == match_id)
-                .order_by(desc(State.created_at))
+                .order_by(
+                    desc(State.end_number),
+                    desc(State.total_shot_number).nullslast(),
+                    desc(State.state_id),
+                )
                 .limit(1)
             )
             result = await session.execute(stmt)
