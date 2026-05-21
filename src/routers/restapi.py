@@ -12,10 +12,12 @@ from src.routers.http_exceptions import not_found
 from src.models.schemas import Match as MatchRow, ShotInfo as ShotInfoRow, State as StateRow
 from src.models.schema_models import (
     MatchDataSchema,
+    MatchSummarySchema,
     ScoreSchema,
     ShotInfoSchema,
     StateSchema,
     StoneCoordinateSchema,
+    TournamentSchema,
 )
 
 logging.basicConfig(level=logging.DEBUG)
@@ -611,3 +613,44 @@ class ShotInfoAPI:
             if shot_info is None:
                 raise not_found("Shot info not found.")
             return shot_info
+
+
+class TournamentAPI:
+    """Read-only endpoints for tournament listing."""
+
+    @staticmethod
+    @rest_router.get("/tournaments", response_model=List[TournamentSchema])
+    async def list_tournaments():
+        """List all tournaments ordered by name.
+
+        Returns:
+            List[TournamentSchema]: All tournaments.
+        """
+
+        async with Session() as session:
+            return await ReadData.read_all_tournaments(session)
+
+
+class MatchListAPI:
+    """Read-only endpoints for listing matches with filters."""
+
+    @staticmethod
+    @rest_router.get("/matches", response_model=List[MatchSummarySchema])
+    async def list_matches(tournament_name: str = Query(..., min_length=1)):
+        """List matches filtered by tournament name, ordered by start time descending.
+
+        Args:
+            tournament_name: Tournament name to filter by.
+
+        Returns:
+            List[MatchSummarySchema]: Matches with team0/team1 names and result.
+
+        Raises:
+            HTTPException: If no matches are found for the given tournament name.
+        """
+
+        async with Session() as session:
+            matches = await ReadData.read_matches_by_tournament_name(tournament_name, session)
+            if not matches:
+                raise not_found("Tournament not found or has no matches.")
+            return matches

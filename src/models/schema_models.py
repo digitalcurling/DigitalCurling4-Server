@@ -259,6 +259,32 @@ class MatchDataSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class MatchSummarySchema(BaseModel):
+    """Lightweight match record for listing purposes.
+
+    Attributes:
+        match_id: Unique identifier of the match.
+        match_name: Human-readable match name.
+        first_team_name: Display name of team0 (first team).
+        second_team_name: Display name of team1 (second team).
+        winner_team_id: Winner identifier when the match is decided.
+        game_mode: Match mode, either standard or mixed_doubles.
+        started_at: Match start timestamp.
+        tournament_id: Tournament identifier.
+    """
+
+    match_id: UUID
+    match_name: str
+    first_team_name: str | None
+    second_team_name: str | None
+    winner_team_id: UUID | None
+    game_mode: Literal["standard", "mixed_doubles"]
+    started_at: datetime
+    tournament_id: UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TeamSchema(BaseModel):
     """Team composition with optional embedded player data.
 

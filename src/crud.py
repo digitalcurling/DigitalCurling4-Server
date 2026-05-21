@@ -8,6 +8,7 @@ from typing import List
 
 from src.models.schema_models import (
     MatchDataSchema,
+    MatchSummarySchema,
     ScoreSchema,
     StateSchema,
     StoneCoordinateSchema,
@@ -708,6 +709,35 @@ class ReadData:
         except Exception as e:
             logging.error(f"Failed to read last shot info by post state id: {e}")
             return None
+
+    @staticmethod
+    async def read_all_tournaments(session: AsyncSession) -> List[TournamentSchema]:
+        """Read all tournaments ordered by tournament_name."""
+        try:
+            stmt = select(Tournament).order_by(Tournament.tournament_name)
+            result = await session.execute(stmt)
+            return [TournamentSchema.model_validate(row) for row in result.scalars().all()]
+        except Exception as e:
+            logging.error(f"Failed to read all tournaments: {e}")
+            return []
+
+    @staticmethod
+    async def read_matches_by_tournament_name(
+        tournament_name: str, session: AsyncSession
+    ) -> List[MatchSummarySchema]:
+        """Read all matches belonging to a tournament, ordered by started_at descending."""
+        try:
+            stmt = (
+                select(Match)
+                .join(Tournament, Match.tournament_id == Tournament.tournament_id)
+                .where(Tournament.tournament_name == tournament_name)
+                .order_by(Match.started_at.desc())
+            )
+            result = await session.execute(stmt)
+            return [MatchSummarySchema.model_validate(row) for row in result.scalars().all()]
+        except Exception as e:
+            logging.error(f"Failed to read matches by tournament name: {e}")
+            return []
 
 
 class CreateData:
