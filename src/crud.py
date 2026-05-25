@@ -454,7 +454,7 @@ class ReadData:
                     joinedload(State.score),
                 )
                 .where(State.match_id == match_id, State.end_number == end_number)
-                .order_by(State.team_shot_number)
+                .order_by(State.total_shot_number)
             )
             result = await session.execute(stmt)
             result = result.scalars().all()

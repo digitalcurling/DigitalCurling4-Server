@@ -410,7 +410,7 @@ class MatchShotsAPI:
                 select(ShotInfoRow)
                 .join(StateRow, ShotInfoRow.post_shot_state_id == StateRow.state_id)
                 .where(StateRow.match_id == match_id, StateRow.end_number == end_number)
-                .order_by(StateRow.team_shot_number)
+                .order_by(StateRow.total_shot_number)
             )
             result = await session.execute(stmt)
             rows = result.scalars().all()
@@ -441,7 +441,7 @@ class MatchShotsAPI:
                 select(ShotInfoRow)
                 .join(StateRow, ShotInfoRow.post_shot_state_id == StateRow.state_id)
                 .where(StateRow.match_id == match_id, StateRow.end_number == end_number)
-                .order_by(StateRow.team_shot_number)
+                .order_by(StateRow.total_shot_number)
             )
             result = await session.execute(stmt)
             rows = result.scalars().all()
@@ -449,16 +449,16 @@ class MatchShotsAPI:
 
     @staticmethod
     @rest_router.get(
-        "/matches/{match_id}/ends/{end_number}/shots/{team_shot_number}",
+        "/matches/{match_id}/ends/{end_number}/shots/{total_shot_number}",
         response_model=ShotInfoSchema,
     )
-    async def get_shot_in_end(match_id: UUID, end_number: int, team_shot_number: int):
+    async def get_shot_in_end(match_id: UUID, end_number: int, total_shot_number: int):
         """Get one shot record identified by end and shot number.
 
         Args:
             match_id: Match identifier.
             end_number: End index.
-            team_shot_number: Shot index within the end.
+            total_shot_number: Shot index within the end (unique per end, 0-based).
 
         Returns:
             ShotInfoSchema: Shot details for the requested index.
@@ -474,7 +474,7 @@ class MatchShotsAPI:
                 .where(
                     StateRow.match_id == match_id,
                     StateRow.end_number == end_number,
-                    StateRow.team_shot_number == team_shot_number,
+                    StateRow.total_shot_number == total_shot_number,
                 )
                 .limit(1)
             )
