@@ -89,6 +89,40 @@ PASS_WORD="pass1"
 
     If you don't want to see the logs, you can run the server in daemon mode with the `-d` flag.
 
+### Database migration
+
+When the database schema is updated, existing databases need to be migrated manually.
+This project does not use a migration tool, so you need to apply changes directly.
+
+**Apply changes to an existing database (keeps existing data)**
+
+1. Check the container name of the `db` service:
+
+    ```bash
+    docker compose ps
+    ```
+
+1. Connect to the database:
+
+    ```bash
+    docker exec -it <db_container_name> psql -U <POSTGRES_USER> -d <POSTGRES_DB>
+    ```
+
+    Replace `<POSTGRES_USER>` and `<POSTGRES_DB>` with the values in your `.env` file.
+
+1. Run the migration SQL. For example, to add the `actual_angular_velocity` column:
+
+    ```sql
+    ALTER TABLE shot_info ADD COLUMN actual_angular_velocity DOUBLE PRECISION;
+    ```
+
+1. Verify and exit:
+
+    ```sql
+    \d shot_info
+    \q
+    ```
+
 ## Communication through SSE
 
 Board data is sent to the client by SSE.

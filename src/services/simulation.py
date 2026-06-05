@@ -32,14 +32,12 @@ def simulate_fcv1(
         ]
     )
 
-    spin_sign = 1 if shot_info.angular_velocity >= 0 else -1
-
     simulated_stones_coordinate, trajectory = stone_simulator.simulator(
         stone_position,
         total_shot_number,
         velocity_x,
         velocity_y,
-        spin_sign,
+        shot_info.angular_velocity,
         team_number,
         shot_per_team,
         applied_rule,

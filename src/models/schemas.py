@@ -201,6 +201,7 @@ class ShotInfo(Base):
     post_shot_state_id = Column(Uuid, default=uuid7)
     actual_translational_velocity = Column(Float)
     actual_shot_angle = Column(Float)
+    actual_angular_velocity = Column(Float)
     translational_velocity = Column(Float)
     angular_velocity = Column(Float)
     shot_angle = Column(Float)

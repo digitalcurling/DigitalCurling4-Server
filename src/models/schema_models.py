@@ -108,6 +108,7 @@ class ShotInfoSchema(BaseModel):
         post_shot_state_id: State identifier immediately after the shot.
         actual_translational_velocity: Observed translational velocity.
         actual_shot_angle: Observed release angle.
+        actual_angular_velocity: Observed angular velocity.
         translational_velocity: Requested translational velocity.
         angular_velocity: Requested angular velocity.
         shot_angle: Requested release angle.
@@ -121,6 +122,7 @@ class ShotInfoSchema(BaseModel):
     post_shot_state_id: UUID
     actual_translational_velocity: float
     actual_shot_angle: float
+    actual_angular_velocity: float
     translational_velocity: float
     angular_velocity: float
     shot_angle: float
