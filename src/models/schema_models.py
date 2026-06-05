@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Json, Field
+from pydantic import BaseModel, ConfigDict, Json, Field, model_validator
 from typing import Literal, Optional
 from uuid import UUID
 from datetime import datetime
@@ -122,12 +122,18 @@ class ShotInfoSchema(BaseModel):
     post_shot_state_id: UUID
     actual_translational_velocity: float
     actual_shot_angle: float
-    actual_angular_velocity: float
+    actual_angular_velocity: float | None = None
     translational_velocity: float
     angular_velocity: float
     shot_angle: float
 
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode='after')
+    def fill_actual_angular_velocity(self) -> 'ShotInfoSchema':
+        if self.actual_angular_velocity is None:
+            self.actual_angular_velocity = self.angular_velocity
+        return self
 
 
 class StateSchema(BaseModel):
