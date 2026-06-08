@@ -626,6 +626,7 @@ class DCServer:
             pass
         else:
             dist_shot_info.angular_velocity *= -angular_velocity_sign
+            shot_info.angular_velocity *= -angular_velocity_sign
         dist_shot_info.shot_angle = shot_info.shot_angle + np.random.normal(
             loc=0.0, scale=player_data.angle_std_dev
         )
