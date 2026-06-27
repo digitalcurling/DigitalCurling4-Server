@@ -160,7 +160,9 @@ ALTER TABLE match_data
 -- shot_info → player / trajectory / state(x2)
 ALTER TABLE shot_info
   ADD CONSTRAINT fk_shot_player
-    FOREIGN KEY(player_id) REFERENCES player(player_id) ON DELETE CASCADE;
+    FOREIGN KEY(player_id) REFERENCES player(player_id) ON DELETE CASCADE,
+  ADD CONSTRAINT fk_shot_trajectory
+    FOREIGN KEY(trajectory_id) REFERENCES trajectory(trajectory_id);
 
 -- state → match_data / score / shot_info / stone_coordinate
 ALTER TABLE state

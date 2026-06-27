@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from typing import List
 
@@ -27,6 +28,7 @@ from src.models.schemas import (
     PhysicalSimulator,
     Player,
     ShotInfo,
+    Trajectory,
 )
 from uuid import UUID
 
@@ -711,6 +713,36 @@ class ReadData:
             return None
 
     @staticmethod
+    async def read_latest_shot_info_by_match_id(
+        match_id: UUID, session: AsyncSession
+    ) -> ShotInfoSchema | None:
+        """Read the most recent ShotInfo for a match by joining to its post-shot State.
+
+        Unlike read_latest_state_data + read_last_shot_info_by_post_state_id,
+        this query joins ShotInfo directly to State so it never lands on an
+        un-shot initial state (e.g. first state of a new end after end transition).
+        """
+        try:
+            stmt = (
+                select(ShotInfo)
+                .join(State, ShotInfo.post_shot_state_id == State.state_id)
+                .where(State.match_id == match_id)
+                .order_by(
+                    desc(State.end_number),
+                    desc(State.total_shot_number),
+                )
+                .limit(1)
+            )
+            result = await session.execute(stmt)
+            row = result.scalars().first()
+            if row is None:
+                return None
+            return ShotInfoSchema.model_validate(row)
+        except Exception as e:
+            logging.error(f"Failed to read latest shot info by match id: {e}")
+            return None
+
+    @staticmethod
     async def read_all_tournaments(session: AsyncSession) -> List[TournamentSchema]:
         """Read all tournaments ordered by tournament_name."""
         try:
@@ -903,9 +935,19 @@ class CreateData:
         session.add_all([new_stone_coordinate, new_state])
 
     @staticmethod
+    async def ensure_trajectory_data(trajectory_id: UUID, session: AsyncSession) -> None:
+        """Ensure an id-only trajectory row exists before inserting shot_info."""
+
+        trajectory = await session.get(Trajectory, trajectory_id)
+        if trajectory is None:
+            session.add(Trajectory(trajectory_id=trajectory_id))
+            await session.flush()
+
+    @staticmethod
     async def add_shot_info_data(shot_info: ShotInfoSchema, session: AsyncSession) -> None:
         """Add shot_info row to the current transaction without committing."""
 
+        await CreateData.ensure_trajectory_data(shot_info.trajectory_id, session)
         new_shot_info = ShotInfo(
             shot_id=shot_info.shot_id,
             player_id=shot_info.player_id,
@@ -974,6 +1016,7 @@ class CreateData:
             session (AsyncSession): AsyncSession object to interact with database
         """
         try:
+            await CreateData.ensure_trajectory_data(shot_info.trajectory_id, session)
             new_shot_info = ShotInfo(
                 shot_id=shot_info.shot_id,
                 player_id=shot_info.player_id,
@@ -1073,6 +1116,15 @@ class CreateData:
                 session.add(new_player)
                 await session.commit()
             return True
+        except IntegrityError as e:
+            await session.rollback()
+            result = await session.execute(
+                select(Player).where(Player.player_id == player.player_id)
+            )
+            if result.scalars().first() is not None:
+                return True
+            logging.error(f"Failed to create default player data: {e}")
+            return False
         except Exception as e:
             await session.rollback()
             logging.error(f"Failed to create default player data: {e}")

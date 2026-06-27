@@ -503,12 +503,12 @@ class MatchShotsAPI:
         """
 
         async with Session() as session:
-            latest_state = await ReadData.read_latest_state_data(match_id, session)
-            if latest_state is None:
+            match_data = await ReadData.read_match_data(match_id, session)
+            if match_data is None:
                 raise not_found("Match not found.")
-            shot_info = await ReadData.read_last_shot_info_by_post_state_id(latest_state.state_id, session)
+            shot_info = await ReadData.read_latest_shot_info_by_match_id(match_id, session)
             if shot_info is None:
-                raise not_found("Shot info not found.")
+                raise not_found("No shots have been thrown yet.")
             return shot_info
 
 
